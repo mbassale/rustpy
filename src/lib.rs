@@ -2,32 +2,65 @@ mod lexer;
 mod token;
 mod ast;
 mod parser;
+mod compiler;
+
+use parser::ParserError;
 
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::parser::Parser;
+use crate::compiler::Compiler;
+
+#[derive(Clone, Debug)]
+pub enum InterpreterError {
+    LexerError(String),
+    ParserError(ParserError)
+}
 
 pub struct Interpreter {
     source: String,
-    errors: Vec<String>,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
             source: String::new(),
-            errors: vec![],
         }
     }
 
-    pub fn run(&mut self, source: &str) {
+    pub fn run(&mut self, source: &str) -> Result<(), InterpreterError> {
         self.source = String::from(source);
-        self.errors.clear();
 
         let tokens: Vec<Token> = Lexer::new(&self.source).into_iter().collect();
         let tokens = dbg!(tokens);
+        self.check_lexer_errors(&tokens)?;
 
         let mut parser = Parser::new(tokens);
-        parser.parse();
+        let program = match parser.parse() {
+            Ok(program) => program,
+            Err(parser_error) => return Err(InterpreterError::ParserError(parser_error)),
+        };
+        let program = dbg!(program);
+
+        let mut compiler = Compiler::new(program);
+        compiler.compile();
+
+        Ok(())
+    }
+
+    fn check_lexer_errors(&self, tokens: &Vec<Token>) -> Result<(), InterpreterError> {
+        if let Some(token_error) = tokens.iter().find(|&token| {
+            match token {
+                Token::Error(_) => true,
+                _ => false
+            }
+        }) {
+            let error_message: String = match token_error {
+                Token::Error(error_message) => error_message.to_string(),
+                _ => String::from("Unknown lexer error"),
+            };
+            return Err(InterpreterError::LexerError(error_message));
+        }
+        Ok(())
     }
 }

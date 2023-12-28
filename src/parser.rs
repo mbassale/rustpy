@@ -4,7 +4,7 @@ use crate::ast::{
 };
 use crate::token::Token;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ParserError {
     InvalidOperator(String),
     InvalidPrimary(String),
@@ -254,14 +254,37 @@ mod tests {
 
     #[test]
     fn test_binary_expressions() {
-        vec![(
-            vec![Token::True, Token::And, Token::False, Token::Eof],
-            vec![Box::new(Expression::Binary(BinaryExpression {
-                lhs: Box::new(Expression::Literal(Value::Bool(true))),
-                op: Operator::And,
-                rhs: Box::new(Expression::Literal(Value::Bool(false))),
-            }))],
-        )]
+        vec![
+            (
+                vec![Token::True, Token::And, Token::False, Token::Eof],
+                vec![Box::new(Expression::Binary(BinaryExpression {
+                    lhs: Box::new(Expression::Literal(Value::Bool(true))),
+                    op: Operator::And,
+                    rhs: Box::new(Expression::Literal(Value::Bool(false))),
+                }))],
+            ),
+            (
+                vec![Token::True, Token::Or, Token::False, Token::Eof],
+                vec![Box::new(Expression::Binary(BinaryExpression {
+                    lhs: Box::new(Expression::Literal(Value::Bool(true))),
+                    op: Operator::Or,
+                    rhs: Box::new(Expression::Literal(Value::Bool(false))),
+                }))],
+            ),
+            (
+                vec![
+                    Token::Numeric(1.0),
+                    Token::Less,
+                    Token::Numeric(2.0),
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::Binary(BinaryExpression {
+                    lhs: Box::new(Expression::Literal(Value::Numeric(1.0))),
+                    op: Operator::Less,
+                    rhs: Box::new(Expression::Literal(Value::Numeric(2.0))),
+                }))],
+            ),
+        ]
         .into_iter()
         .for_each(|(tokens, exprs)| {
             let mut parser = Parser::new(tokens);
