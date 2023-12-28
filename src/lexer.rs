@@ -71,6 +71,10 @@ impl Lexer {
             }
         }
 
+        if chr == '"' {
+            return self.parse_string(chr);
+        }
+
         if chr.is_ascii_punctuation() {
             match self.parse_operator(chr) {
                 Some(token) => return token,
@@ -92,6 +96,24 @@ impl Lexer {
         }
 
         return Token::Error(format!("Error: invalid character: {}", chr));
+    }
+
+    fn parse_string(&mut self, chr: char) -> Token {
+        let mut buffer = String::new();
+        self.index += 1;
+        loop {
+            let c: char = match self.chars.get(self.index) {
+                Some(c) => *c,
+                None => '"',
+            };
+            if c == '"' {
+                self.index += 1;
+                break;
+            }
+            buffer.push(c);
+            self.index += 1;
+        }
+        Token::String(buffer)
     }
 
     fn parse_operator(&mut self, chr: char) -> Option<Token> {
@@ -350,6 +372,30 @@ mod tests {
                 "1.1.1.1",
                 vec![
                     Token::Error(String::from("Invalid number: 1.1.1.1")),
+                    Token::Eof,
+                ],
+            ),
+        ]
+        .into_iter()
+        .for_each(|(source, expected)| {
+            let actual: Vec<Token> = Lexer::new(source).into_iter().collect();
+            assert_eq!(actual, expected);
+        });
+    }
+
+    #[test]
+    fn test_strings() {
+        vec![
+            (
+                "\"test1\"",
+                vec![Token::String(String::from("test1")), Token::Eof],
+            ),
+            (
+                "\"test1\" + \"test2\"",
+                vec![
+                    Token::String(String::from("test1")),
+                    Token::Plus,
+                    Token::String(String::from("test2")),
                     Token::Eof,
                 ],
             ),

@@ -42,6 +42,7 @@ pub enum Token {
     Return,
     Numeric(f64),
     Identifier(String),
+    String(String),
     Eof,
     Error(String),
 }
