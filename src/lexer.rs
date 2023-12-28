@@ -109,6 +109,13 @@ impl Lexer {
             ']' => Some(Token::RightBracket),
             '{' => Some(Token::LeftBrace),
             '}' => Some(Token::RightBrace),
+            '!' => match self.chars.get(self.index + 1) {
+                Some(&'=') => {
+                    self.index += 1;
+                    Some(Token::BangEqual)
+                }
+                _ => Some(Token::Bang),
+            },
             '<' => match self.chars.get(self.index + 1) {
                 Some(&'=') => {
                     self.index += 1;
@@ -160,10 +167,13 @@ impl Lexer {
             },
             'd' => self.consume(Token::Def, "def"),
             'f' => self.consume(Token::For, "for"),
+            'F' => self.consume(Token::False, "False"),
+            'N' => self.consume(Token::None, "None"),
             'w' => self.consume(Token::While, "while"),
             'c' => self.consume(Token::Continue, "continue"),
             'b' => self.consume(Token::Break, "break"),
             'r' => self.consume(Token::Return, "return"),
+            'T' => self.consume(Token::True, "True"),
             _ => None,
         }
     }
@@ -230,7 +240,7 @@ mod tests {
     #[test]
     fn test_operators() {
         let test_cases = vec![(
-            "+-*/:,.()[]{}===<=<>=>",
+            "+-*/:,.()[]{}===<=<>=>!=!",
             vec![
                 Token::Plus,
                 Token::Minus,
@@ -251,6 +261,8 @@ mod tests {
                 Token::Less,
                 Token::GreaterEqual,
                 Token::Greater,
+                Token::BangEqual,
+                Token::Bang,
                 Token::Eof,
             ],
         )];
@@ -273,8 +285,11 @@ mod tests {
             ("continue", vec![Token::Continue, Token::Eof]),
             ("break", vec![Token::Break, Token::Eof]),
             ("return", vec![Token::Return, Token::Eof]),
+            ("None", vec![Token::None, Token::Eof]),
+            ("True", vec![Token::True, Token::Eof]),
+            ("False", vec![Token::False, Token::Eof]),
             (
-                "and or if in def elif else continue break return",
+                "and or if in def elif else continue break return None True False",
                 vec![
                     Token::And,
                     Token::Or,
@@ -286,6 +301,9 @@ mod tests {
                     Token::Continue,
                     Token::Break,
                     Token::Return,
+                    Token::None,
+                    Token::True,
+                    Token::False,
                     Token::Eof,
                 ],
             ),
@@ -330,7 +348,10 @@ mod tests {
             ("12345.6789", vec![Token::Numeric(12345.6789), Token::Eof]),
             (
                 "1.1.1.1",
-                vec![Token::Error(String::from("Invalid number: 1.1.1.1")), Token::Eof],
+                vec![
+                    Token::Error(String::from("Invalid number: 1.1.1.1")),
+                    Token::Eof,
+                ],
             ),
         ]
         .into_iter()
