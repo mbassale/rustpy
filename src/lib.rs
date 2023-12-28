@@ -1,20 +1,20 @@
-mod lexer;
-mod token;
 mod ast;
-mod parser;
+mod bytecode;
 mod compiler;
+mod lexer;
+mod parser;
+mod token;
 
-use parser::ParserError;
-
+use crate::compiler::{Compiler, CompilerError};
 use crate::lexer::Lexer;
+use crate::parser::{Parser, ParserError};
 use crate::token::Token;
-use crate::parser::Parser;
-use crate::compiler::Compiler;
 
 #[derive(Clone, Debug)]
 pub enum InterpreterError {
     LexerError(String),
-    ParserError(ParserError)
+    ParserError(ParserError),
+    CompilerError(CompilerError),
 }
 
 pub struct Interpreter {
@@ -43,17 +43,19 @@ impl Interpreter {
         let program = dbg!(program);
 
         let mut compiler = Compiler::new(program);
-        compiler.compile();
+        let chunk = match compiler.compile() {
+            Ok(chunk) => chunk,
+            Err(compiler_error) => return Err(InterpreterError::CompilerError(compiler_error)),
+        };
+        let _chunk = dbg!(chunk);
 
         Ok(())
     }
 
     fn check_lexer_errors(&self, tokens: &Vec<Token>) -> Result<(), InterpreterError> {
-        if let Some(token_error) = tokens.iter().find(|&token| {
-            match token {
-                Token::Error(_) => true,
-                _ => false
-            }
+        if let Some(token_error) = tokens.iter().find(|&token| match token {
+            Token::Error(_) => true,
+            _ => false,
         }) {
             let error_message: String = match token_error {
                 Token::Error(error_message) => error_message.to_string(),
