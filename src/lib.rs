@@ -1,8 +1,11 @@
 mod lexer;
 mod token;
+mod ast;
+mod parser;
 
 use crate::lexer::Lexer;
 use crate::token::Token;
+use crate::parser::Parser;
 
 pub struct Interpreter {
     source: String,
@@ -22,6 +25,9 @@ impl Interpreter {
         self.errors.clear();
 
         let tokens: Vec<Token> = Lexer::new(&self.source).into_iter().collect();
-        dbg!(tokens);
+        let tokens = dbg!(tokens);
+
+        let mut parser = Parser::new(tokens);
+        parser.parse();
     }
 }
