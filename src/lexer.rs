@@ -228,15 +228,27 @@ impl Lexer {
                 None => break,
             };
         }
-        let number: f64 = match buffer.parse() {
-            Ok(number) => number,
-            Err(_) => {
-                self.index += buffer.len();
-                return Token::Error(format!("Invalid number: {}", buffer));
-            }
-        };
         self.index += buffer.len();
-        Token::Numeric(number)
+        match buffer.find('.') {
+            Some(_) => {
+                let number: f64 = match buffer.parse() {
+                    Ok(number) => number,
+                    Err(_) => {
+                        return Token::Error(format!("Invalid float: {}", buffer));
+                    }
+                };
+                Token::Float(number)
+            }
+            None => {
+                let number: i64 = match buffer.parse() {
+                    Ok(number) => number,
+                    Err(_) => {
+                        return Token::Error(format!("Invalid integer: {}", buffer));
+                    }
+                };
+                Token::Integer(number)
+            }
+        }
     }
 
     fn consume(&mut self, token: Token, keyword: &str) -> Option<Token> {
@@ -362,16 +374,16 @@ mod tests {
     #[test]
     fn test_numbers() {
         vec![
-            ("0", vec![Token::Numeric(0.0), Token::Eof]),
-            ("1", vec![Token::Numeric(1.0), Token::Eof]),
-            ("1234567890", vec![Token::Numeric(1234567890.0), Token::Eof]),
-            ("1.1", vec![Token::Numeric(1.1), Token::Eof]),
-            ("1.23456789", vec![Token::Numeric(1.23456789), Token::Eof]),
-            ("12345.6789", vec![Token::Numeric(12345.6789), Token::Eof]),
+            ("0", vec![Token::Integer(0), Token::Eof]),
+            ("1", vec![Token::Integer(1), Token::Eof]),
+            ("1234567890", vec![Token::Integer(1234567890), Token::Eof]),
+            ("1.1", vec![Token::Float(1.1), Token::Eof]),
+            ("1.23456789", vec![Token::Float(1.23456789), Token::Eof]),
+            ("12345.6789", vec![Token::Float(12345.6789), Token::Eof]),
             (
                 "1.1.1.1",
                 vec![
-                    Token::Error(String::from("Invalid number: 1.1.1.1")),
+                    Token::Error(String::from("Invalid float: 1.1.1.1")),
                     Token::Eof,
                 ],
             ),
@@ -430,12 +442,12 @@ def test(x):
                 Token::If,
                 Token::Identifier(String::from("x")),
                 Token::Greater,
-                Token::Numeric(0.0),
+                Token::Integer(0),
                 Token::Colon,
                 Token::NewLine,
                 Token::Indent(4),
                 Token::Return,
-                Token::Numeric(1.0),
+                Token::Integer(1),
                 Token::NewLine,
                 Token::Dedent(2),
                 Token::Else,
@@ -443,7 +455,7 @@ def test(x):
                 Token::NewLine,
                 Token::Indent(4),
                 Token::Return,
-                Token::Numeric(0.0),
+                Token::Integer(0),
                 Token::NewLine,
                 Token::Eof,
             ],

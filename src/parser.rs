@@ -140,9 +140,8 @@ impl Parser {
             Token::None => Ok(Box::new(Expression::Literal(Literal::None))),
             Token::True => Ok(Box::new(Expression::Literal(Literal::True))),
             Token::False => Ok(Box::new(Expression::Literal(Literal::False))),
-            Token::Numeric(value) => Ok(Box::new(Expression::Literal(Literal::Integer(
-                *value as i64,
-            )))),
+            Token::Integer(value) => Ok(Box::new(Expression::Literal(Literal::Integer(*value)))),
+            Token::Float(value) => Ok(Box::new(Expression::Literal(Literal::Float(*value)))),
             Token::String(value) => Ok(Box::new(Expression::Literal(Literal::String(
                 value.to_string(),
             )))),
@@ -232,8 +231,12 @@ mod tests {
                 vec![Box::new(Expression::Literal(Literal::False))],
             ),
             (
-                vec![Token::Numeric(1.0), Token::Eof],
+                vec![Token::Integer(1), Token::Eof],
                 vec![Box::new(Expression::Literal(Literal::Integer(1)))],
+            ),
+            (
+                vec![Token::Float(1.0), Token::Eof],
+                vec![Box::new(Expression::Literal(Literal::Float(1.0)))],
             ),
             (
                 vec![Token::String(String::from("test1")), Token::Eof],
@@ -274,9 +277,9 @@ mod tests {
             ),
             (
                 vec![
-                    Token::Numeric(1.0),
+                    Token::Integer(1),
                     Token::Less,
-                    Token::Numeric(2.0),
+                    Token::Integer(2),
                     Token::Eof,
                 ],
                 vec![Box::new(Expression::Binary(BinaryExpression {
