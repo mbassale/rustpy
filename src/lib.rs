@@ -4,11 +4,13 @@ mod compiler;
 mod lexer;
 mod parser;
 mod token;
+mod vm;
 
 use crate::compiler::{Compiler, CompilerError};
 use crate::lexer::Lexer;
 use crate::parser::{Parser, ParserError};
 use crate::token::Token;
+use crate::vm::{Vm, VmError};
 
 #[derive(Clone, Debug)]
 pub enum InterpreterError {
@@ -47,7 +49,10 @@ impl Interpreter {
             Ok(chunk) => chunk,
             Err(compiler_error) => return Err(InterpreterError::CompilerError(compiler_error)),
         };
-        let _chunk = dbg!(chunk);
+        let chunk = dbg!(chunk);
+
+        let mut vm = Vm::new();
+        let _ = vm.interpret(&chunk);
 
         Ok(())
     }

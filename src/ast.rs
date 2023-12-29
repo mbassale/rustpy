@@ -16,13 +16,14 @@ pub enum Operator {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Value {
+pub enum Literal {
     None,
-    Bool(bool),
-    Numeric(f64),
+    True,
+    False,
+    Integer(i64),
+    Float(f64),
     String(String),
 }
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     Function(FunctionExpression),
@@ -31,7 +32,7 @@ pub enum Expression {
     Unary(UnaryExpression),
     Binary(BinaryExpression),
     Variable(String),
-    Literal(Value),
+    Literal(Literal),
 }
 
 #[derive(Clone, Debug)]

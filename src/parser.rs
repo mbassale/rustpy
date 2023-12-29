@@ -1,6 +1,5 @@
 use crate::ast::{
-    AssignmentExpression, BinaryExpression, CallExpression, Expression, FunctionExpression,
-    Operator, Program, UnaryExpression, Value,
+    AssignmentExpression, BinaryExpression, Expression, Literal, Operator, Program, UnaryExpression,
 };
 use crate::token::Token;
 
@@ -138,11 +137,13 @@ impl Parser {
 
     fn parse_primary(&mut self) -> Result<Box<Expression>, ParserError> {
         let expr = match self.current_token() {
-            Token::None => Ok(Box::new(Expression::Literal(Value::None))),
-            Token::True => Ok(Box::new(Expression::Literal(Value::Bool(true)))),
-            Token::False => Ok(Box::new(Expression::Literal(Value::Bool(false)))),
-            Token::Numeric(value) => Ok(Box::new(Expression::Literal(Value::Numeric(*value)))),
-            Token::String(value) => Ok(Box::new(Expression::Literal(Value::String(
+            Token::None => Ok(Box::new(Expression::Literal(Literal::None))),
+            Token::True => Ok(Box::new(Expression::Literal(Literal::True))),
+            Token::False => Ok(Box::new(Expression::Literal(Literal::False))),
+            Token::Numeric(value) => Ok(Box::new(Expression::Literal(Literal::Integer(
+                *value as i64,
+            )))),
+            Token::String(value) => Ok(Box::new(Expression::Literal(Literal::String(
                 value.to_string(),
             )))),
             Token::Identifier(value) => Ok(Box::new(Expression::Variable(value.to_string()))),
@@ -220,25 +221,25 @@ mod tests {
         vec![
             (
                 vec![Token::None, Token::Eof],
-                vec![Box::new(Expression::Literal(Value::None))],
+                vec![Box::new(Expression::Literal(Literal::None))],
             ),
             (
                 vec![Token::True, Token::Eof],
-                vec![Box::new(Expression::Literal(Value::Bool(true)))],
+                vec![Box::new(Expression::Literal(Literal::True))],
             ),
             (
                 vec![Token::False, Token::Eof],
-                vec![Box::new(Expression::Literal(Value::Bool(false)))],
+                vec![Box::new(Expression::Literal(Literal::False))],
             ),
             (
-                vec![Token::Numeric(1.23), Token::Eof],
-                vec![Box::new(Expression::Literal(Value::Numeric(1.23)))],
+                vec![Token::Numeric(1.0), Token::Eof],
+                vec![Box::new(Expression::Literal(Literal::Integer(1)))],
             ),
             (
                 vec![Token::String(String::from("test1")), Token::Eof],
-                vec![Box::new(Expression::Literal(Value::String(String::from(
-                    "test1",
-                ))))],
+                vec![Box::new(Expression::Literal(Literal::String(
+                    String::from("test1"),
+                )))],
             ),
         ]
         .into_iter()
@@ -258,17 +259,17 @@ mod tests {
             (
                 vec![Token::True, Token::And, Token::False, Token::Eof],
                 vec![Box::new(Expression::Binary(BinaryExpression {
-                    lhs: Box::new(Expression::Literal(Value::Bool(true))),
+                    lhs: Box::new(Expression::Literal(Literal::True)),
                     op: Operator::And,
-                    rhs: Box::new(Expression::Literal(Value::Bool(false))),
+                    rhs: Box::new(Expression::Literal(Literal::False)),
                 }))],
             ),
             (
                 vec![Token::True, Token::Or, Token::False, Token::Eof],
                 vec![Box::new(Expression::Binary(BinaryExpression {
-                    lhs: Box::new(Expression::Literal(Value::Bool(true))),
+                    lhs: Box::new(Expression::Literal(Literal::True)),
                     op: Operator::Or,
-                    rhs: Box::new(Expression::Literal(Value::Bool(false))),
+                    rhs: Box::new(Expression::Literal(Literal::False)),
                 }))],
             ),
             (
@@ -279,9 +280,9 @@ mod tests {
                     Token::Eof,
                 ],
                 vec![Box::new(Expression::Binary(BinaryExpression {
-                    lhs: Box::new(Expression::Literal(Value::Numeric(1.0))),
+                    lhs: Box::new(Expression::Literal(Literal::Integer(1))),
                     op: Operator::Less,
-                    rhs: Box::new(Expression::Literal(Value::Numeric(2.0))),
+                    rhs: Box::new(Expression::Literal(Literal::Integer(2))),
                 }))],
             ),
         ]

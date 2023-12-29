@@ -1,4 +1,4 @@
-use crate::ast::{BinaryExpression, Expression, Operator, Program, UnaryExpression, Value};
+use crate::ast::{BinaryExpression, Expression, Literal, Operator, Program, UnaryExpression};
 use crate::bytecode::Bytecode;
 
 #[derive(Clone, Debug)]
@@ -8,7 +8,7 @@ pub enum CompilerError {}
 pub struct Chunk {
     pub name: String,
     pub data: Vec<u8>,
-    pub constants: Vec<Value>,
+    pub constants: Vec<Literal>,
 }
 
 impl Chunk {
@@ -20,8 +20,8 @@ impl Chunk {
         }
     }
 
-    fn add_constant(&mut self, value: &Value) -> usize {
-        self.constants.push(value.clone());
+    fn add_constant(&mut self, literal: &Literal) -> usize {
+        self.constants.push(literal.clone());
         self.constants.len() - 1
     }
 
@@ -89,8 +89,8 @@ impl Compiler {
         }
     }
 
-    fn emit_literal(&self, chunk: &mut Chunk, value: &Value) {
-        let index = chunk.add_constant(value);
+    fn emit_literal(&self, chunk: &mut Chunk, literal: &Literal) {
+        let index = chunk.add_constant(literal);
         chunk.emit(Bytecode::Const);
         chunk.emit_index(index as u64);
     }
