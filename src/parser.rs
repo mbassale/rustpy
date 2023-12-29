@@ -216,7 +216,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_literals() {
+    fn test_primaries() {
         vec![
             (
                 vec![Token::None, Token::Eof],
@@ -243,6 +243,56 @@ mod tests {
                 vec![Box::new(Expression::Literal(Literal::String(
                     String::from("test1"),
                 )))],
+            ),
+            (
+                vec![Token::Identifier(String::from("var1")), Token::Eof],
+                vec![Box::new(Expression::Variable(String::from("var1")))],
+            ),
+        ]
+        .into_iter()
+        .for_each(|(tokens, exprs)| {
+            let mut parser = Parser::new(tokens);
+            let program = match parser.parse() {
+                Ok(program) => program,
+                Err(err) => panic!("ParseError: {:?}", err),
+            };
+            assert_eq!(program.stmts, exprs);
+        });
+    }
+
+    #[test]
+    fn test_assignments() {
+        vec![
+            // Simple Assignment
+            (
+                vec![
+                    Token::Identifier(String::from("var1")),
+                    Token::Equal,
+                    Token::True,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::Assignment(AssignmentExpression {
+                    lhs: Box::new(Expression::Variable(String::from("var1"))),
+                    rhs: Box::new(Expression::Literal(Literal::True)),
+                }))],
+            ),
+            // Chained Assignment
+            (
+                vec![
+                    Token::Identifier(String::from("var1")),
+                    Token::Equal,
+                    Token::Identifier(String::from("var2")),
+                    Token::Equal,
+                    Token::True,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::Assignment(AssignmentExpression {
+                    lhs: Box::new(Expression::Variable(String::from("var1"))),
+                    rhs: Box::new(Expression::Assignment(AssignmentExpression {
+                        lhs: Box::new(Expression::Variable(String::from("var2"))),
+                        rhs: Box::new(Expression::Literal(Literal::True)),
+                    })),
+                }))],
             ),
         ]
         .into_iter()
