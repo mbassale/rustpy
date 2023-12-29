@@ -1,4 +1,10 @@
-#[derive(Clone, Debug)]
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+
+pub const SIZE_INSTRUCTION: usize = 1;
+pub const SIZE_INDEX: usize = 8;
+
+#[derive(Clone, Debug, IntoPrimitive, TryFromPrimitive)]
+#[repr(u8)]
 pub enum Bytecode {
     Nop = 0x00,
     Const = 0x01,

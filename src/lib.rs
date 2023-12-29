@@ -2,6 +2,7 @@ mod ast;
 mod bytecode;
 mod compiler;
 mod lexer;
+mod object;
 mod parser;
 mod token;
 mod vm;
@@ -17,6 +18,7 @@ pub enum InterpreterError {
     LexerError(String),
     ParserError(ParserError),
     CompilerError(CompilerError),
+    VmError(VmError),
 }
 
 pub struct Interpreter {
@@ -51,8 +53,12 @@ impl Interpreter {
         };
         let chunk = dbg!(chunk);
 
-        let mut vm = Vm::new();
-        let _ = vm.interpret(&chunk);
+        let mut vm = Vm::new(chunk);
+        let result = match vm.interpret() {
+            Ok(result) => result,
+            Err(vm_error) => return Err(InterpreterError::VmError(vm_error)),
+        };
+        dbg!(result);
 
         Ok(())
     }

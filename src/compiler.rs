@@ -20,6 +20,15 @@ impl Chunk {
         }
     }
 
+    pub fn get_data_u64(&self, index: usize) -> u64 {
+        assert!(index + 8 < self.data.len());
+        let bytes = &self.data[index..index + 8];
+        if let Ok(array) = bytes.try_into() {
+            return u64::from_ne_bytes(array);
+        }
+        unreachable!();
+    }
+
     fn add_constant(&mut self, literal: &Literal) -> usize {
         self.constants.push(literal.clone());
         self.constants.len() - 1
