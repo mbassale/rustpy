@@ -1,47 +1,11 @@
-use crate::ast::{BinaryExpression, Expression, Literal, Operator, Program, UnaryExpression};
+use crate::ast::{
+    AssignmentExpression, BinaryExpression, Expression, Literal, Operator, Program, UnaryExpression,
+};
 use crate::bytecode::Bytecode;
+use crate::chunk::Chunk;
 
 #[derive(Clone, Debug)]
 pub enum CompilerError {}
-
-#[derive(Clone, Debug)]
-pub struct Chunk {
-    pub name: String,
-    pub data: Vec<u8>,
-    pub constants: Vec<Literal>,
-}
-
-impl Chunk {
-    fn new() -> Chunk {
-        Chunk {
-            name: String::from("__main__"),
-            data: Vec::new(),
-            constants: Vec::new(),
-        }
-    }
-
-    pub fn get_data_u64(&self, index: usize) -> u64 {
-        assert!(index + 8 < self.data.len());
-        let bytes = &self.data[index..index + 8];
-        if let Ok(array) = bytes.try_into() {
-            return u64::from_ne_bytes(array);
-        }
-        unreachable!();
-    }
-
-    fn add_constant(&mut self, literal: &Literal) -> usize {
-        self.constants.push(literal.clone());
-        self.constants.len() - 1
-    }
-
-    fn emit(&mut self, op: Bytecode) {
-        self.data.push(op as u8);
-    }
-
-    fn emit_index(&mut self, index: u64) {
-        self.data.extend_from_slice(&index.to_ne_bytes());
-    }
-}
 
 pub struct Compiler {
     program: Program,
@@ -69,11 +33,19 @@ impl Compiler {
 
     fn emit_expression(&self, chunk: &mut Chunk, expr: &Expression) {
         match expr {
+            Expression::Assignment(assignment) => self.emit_assignment_op(chunk, &assignment),
             Expression::Unary(unary) => self.emit_unary_op(chunk, &unary),
             Expression::Binary(binary) => self.emit_binary_op(chunk, &binary),
-            Expression::Literal(value) => self.emit_literal(chunk, &value),
+            Expression::Variable(value) => self.emit_variable_op(chunk, &value),
+            Expression::Literal(identifier) => self.emit_literal(chunk, &identifier),
             _ => (),
         };
+    }
+
+    fn emit_assignment_op(&self, chunk: &mut Chunk, assignment_expr: &AssignmentExpression) {
+        self.emit_expression(chunk, assignment_expr.lhs.as_ref());
+        self.emit_expression(chunk, assignment_expr.rhs.as_ref());
+        chunk.emit(Bytecode::SetGlobal);
     }
 
     fn emit_unary_op(&self, chunk: &mut Chunk, unary_expr: &UnaryExpression) {
@@ -87,6 +59,12 @@ impl Compiler {
         self.emit_op(chunk, &binary_expr.op);
     }
 
+    fn emit_variable_op(&self, chunk: &mut Chunk, identifier: &str) {
+        let index = chunk.add_global(identifier);
+        chunk.emit(Bytecode::GetGlobal);
+        chunk.emit_index(index);
+    }
+
     fn emit_op(&self, chunk: &mut Chunk, op: &Operator) {
         match op {
             Operator::Neg => chunk.emit(Bytecode::Neg),
@@ -94,7 +72,7 @@ impl Compiler {
             Operator::Sub => chunk.emit(Bytecode::Sub),
             Operator::Mul => chunk.emit(Bytecode::Mul),
             Operator::Div => chunk.emit(Bytecode::Div),
-            _ => (),
+            _ => unimplemented!(),
         }
     }
 

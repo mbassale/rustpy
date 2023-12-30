@@ -1,3 +1,4 @@
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
     Add,
@@ -24,6 +25,7 @@ pub enum Literal {
     Float(f64),
     String(String),
 }
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     Function(FunctionExpression),

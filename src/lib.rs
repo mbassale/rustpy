@@ -1,8 +1,10 @@
 mod ast;
 mod bytecode;
+mod chunk;
 mod compiler;
 mod lexer;
 mod object;
+mod symbol_table;
 mod parser;
 mod token;
 mod vm;

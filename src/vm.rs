@@ -1,18 +1,18 @@
 use crate::bytecode::{Bytecode, SIZE_INDEX, SIZE_INSTRUCTION};
-use crate::compiler::Chunk;
-use crate::object::Object;
+use crate::chunk::Chunk;
+use crate::object::{Object, Value};
 
 #[derive(Clone, Debug)]
 pub enum VmError {
     InvalidBytecode(String),
     InvalidOperand(String),
+    UndefinedName(String),
 }
 
 pub struct Vm {
-    pub stack: Vec<Object>,
-    pub chunk: Chunk,
-    pub top: usize,
-    pub ip: usize,
+    stack: Vec<Object>,
+    chunk: Chunk,
+    ip: usize,
 }
 
 impl Vm {
@@ -20,7 +20,6 @@ impl Vm {
         Vm {
             stack: Vec::new(),
             chunk,
-            top: 0,
             ip: 0,
         }
     }
@@ -49,6 +48,33 @@ impl Vm {
                     self.stack.push(object);
                     self.ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
+
+                // Globals Manipulation
+                Bytecode::GetGlobal => {
+                    let index = self.chunk.get_data_u64(self.ip + 1);
+                    let object = match self.chunk.globals.get(index) {
+                        Some(obj) => obj,
+                        None => {
+                            return Err(VmError::UndefinedName(format!(
+                                "NameError: name '{}' not defined",
+                                index
+                            )))
+                        }
+                    };
+                    self.stack.push(object.clone());
+                    self.ip += SIZE_INSTRUCTION + SIZE_INDEX;
+                }
+                Bytecode::SetGlobal => {
+                    let rhs = self.stack.pop().unwrap();
+                    let mut lhs = self.stack.pop().unwrap();
+                    let index = self.chunk.globals.get_index(&lhs.name);
+                    lhs.value = rhs.value.clone();
+                    self.chunk.globals.set(index, lhs.clone());
+                    self.stack.push(lhs);
+                    self.ip += SIZE_INSTRUCTION;
+                }
+
+                // Binary Ops
                 Bytecode::Add | Bytecode::Sub | Bytecode::Mul | Bytecode::Div => {
                     let rhs = self.stack.pop().unwrap();
                     let lhs = self.stack.pop().unwrap();
@@ -62,7 +88,7 @@ impl Vm {
 
         let result = match self.stack.pop() {
             Some(value) => value,
-            _ => Object::None,
+            _ => Object::new_none(),
         };
         Ok(result)
     }
@@ -76,7 +102,7 @@ fn binary_op(op: &Bytecode, lhs: &Object, rhs: &Object) -> Result<Object, VmErro
         ))
     };
 
-    let apply_i64_op = |lhs: i64, rhs: i64| -> Result<i64, VmError> {
+    let apply_i64_op = |lhs: i64, rhs: i64| -> Result<Value, VmError> {
         let result = match op {
             Bytecode::Add => lhs + rhs,
             Bytecode::Sub => lhs - rhs,
@@ -84,10 +110,10 @@ fn binary_op(op: &Bytecode, lhs: &Object, rhs: &Object) -> Result<Object, VmErro
             Bytecode::Div => lhs / rhs,
             __ => return Err(unsupported_operand_types()),
         };
-        Ok(result)
+        Ok(Value::Integer(result))
     };
 
-    let apply_f64_op = |lhs: f64, rhs: f64| -> Result<f64, VmError> {
+    let apply_f64_op = |lhs: f64, rhs: f64| -> Result<Value, VmError> {
         let result = match op {
             Bytecode::Add => lhs + rhs,
             Bytecode::Sub => lhs - rhs,
@@ -95,29 +121,29 @@ fn binary_op(op: &Bytecode, lhs: &Object, rhs: &Object) -> Result<Object, VmErro
             Bytecode::Div => lhs / rhs,
             _ => return Err(unsupported_operand_types()),
         };
-        Ok(result)
+        Ok(Value::Float(result))
     };
 
-    let apply_string_op = |lhs: &str, rhs: &str| -> Result<String, VmError> {
+    let apply_string_op = |lhs: &str, rhs: &str| -> Result<Value, VmError> {
         match op {
-            Bytecode::Add => Ok(lhs.to_string() + rhs),
+            Bytecode::Add => Ok(Value::String(lhs.to_string() + rhs)),
             _ => return Err(unsupported_operand_types()),
         }
     };
 
-    let result = match lhs {
-        Object::Integer(lhs_val) => match rhs {
-            Object::Integer(rhs_val) => Object::Integer(apply_i64_op(*lhs_val, *rhs_val)?),
-            Object::Float(rhs_val) => Object::Float(apply_f64_op(*lhs_val as f64, *rhs_val)?),
+    let result = match &lhs.value {
+        Value::Integer(lhs_val) => match &rhs.value {
+            Value::Integer(rhs_val) => Object::new(apply_i64_op(*lhs_val, *rhs_val)?),
+            Value::Float(rhs_val) => Object::new(apply_f64_op(*lhs_val as f64, *rhs_val)?),
             _ => return Err(unsupported_operand_types()),
         },
-        Object::Float(lhs_val) => match rhs {
-            Object::Integer(rhs_val) => Object::Float(apply_f64_op(*lhs_val, *rhs_val as f64)?),
-            Object::Float(rhs_val) => Object::Float(apply_f64_op(*lhs_val, *rhs_val)?),
+        Value::Float(lhs_val) => match &rhs.value {
+            Value::Integer(rhs_val) => Object::new(apply_f64_op(*lhs_val, *rhs_val as f64)?),
+            Value::Float(rhs_val) => Object::new(apply_f64_op(*lhs_val, *rhs_val)?),
             _ => return Err(unsupported_operand_types()),
         },
-        Object::String(lhs_val) => match rhs {
-            Object::String(rhs_val) => Object::String(apply_string_op(lhs_val, rhs_val)?),
+        Value::String(lhs_val) => match &rhs.value {
+            Value::String(rhs_val) => Object::new(apply_string_op(&lhs_val, &rhs_val)?),
             _ => return Err(unsupported_operand_types()),
         },
         _ => return Err(unsupported_operand_types()),
