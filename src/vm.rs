@@ -94,6 +94,21 @@ impl Vm {
                     self.ip += SIZE_INSTRUCTION;
                 }
 
+                Bytecode::And
+                | Bytecode::Or
+                | Bytecode::Equal
+                | Bytecode::NotEqual
+                | Bytecode::Less
+                | Bytecode::LessEqual
+                | Bytecode::Greater
+                | Bytecode::GreaterEqual => {
+                    let rhs = self.stack.pop().unwrap();
+                    let lhs = self.stack.pop().unwrap();
+                    let result = logic_op(&op, &lhs, &rhs)?;
+                    self.stack.push(result);
+                    self.ip += SIZE_INSTRUCTION;
+                }
+
                 // Binary Ops
                 Bytecode::Add | Bytecode::Sub | Bytecode::Mul | Bytecode::Div => {
                     let rhs = self.stack.pop().unwrap();
@@ -119,6 +134,21 @@ impl Vm {
         self.stack.clear();
         Ok(())
     }
+}
+
+fn logic_op(op: &Bytecode, lhs: &Object, rhs: &Object) -> Result<Object, VmError> {
+    let result = match op {
+        Bytecode::And => Value::new_from_bool(lhs.is_truthy() && rhs.is_truthy()),
+        Bytecode::Or => Value::new_from_bool(lhs.is_truthy() || rhs.is_truthy()),
+        Bytecode::Equal => Value::new_from_bool(lhs.value == rhs.value),
+        Bytecode::NotEqual => Value::new_from_bool(lhs.value != rhs.value),
+        Bytecode::Less => Value::new_from_bool(lhs.value < rhs.value),
+        Bytecode::LessEqual => Value::new_from_bool(lhs.value <= rhs.value),
+        Bytecode::Greater => Value::new_from_bool(lhs.value > rhs.value),
+        Bytecode::GreaterEqual => Value::new_from_bool(lhs.value >= rhs.value),
+        _ => unreachable!(),
+    };
+    Ok(Object::new(result))
 }
 
 fn binary_op(op: &Bytecode, lhs: &Object, rhs: &Object) -> Result<Object, VmError> {

@@ -22,11 +22,20 @@ pub enum Bytecode {
     GetGlobal = 0x21,
 
     // Binary Ops
-    Neg = 0x54,
-    Add = 0x55,
-    Sub = 0x56,
-    Mul = 0x57,
-    Div = 0x58,
+    And = 0x50,
+    Or = 0x51,
+    Equal = 0x52,
+    NotEqual = 0x53,
+    Less = 0x54,
+    LessEqual = 0x55,
+    Greater = 0x56,
+    GreaterEqual = 0x57,
+
+    Neg = 0x58,
+    Add = 0x59,
+    Sub = 0x60,
+    Mul = 0x61,
+    Div = 0x62,
 
     // For disassembler usage
     Unknown = 0xFF,

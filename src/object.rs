@@ -2,14 +2,14 @@ use crate::ast::Literal;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-#[derive(Clone, Debug, PartialEq, Hash)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Hash)]
 pub struct Object {
     pub id: u64,
     pub name: String,
     pub value: Value,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Value {
     None,
     True,
@@ -17,6 +17,38 @@ pub enum Value {
     Integer(i64),
     Float(f64),
     String(String),
+}
+
+impl Value {
+    pub fn new_from_bool(value: bool) -> Value {
+        if value {
+            Value::True
+        } else {
+            Value::False
+        }
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::None => false,
+            Value::True => true,
+            Value::False => false,
+            Value::Integer(value) => *value != 0,
+            Value::Float(value) => *value != 0.0,
+            Value::String(value) => !value.is_empty(),
+        }
+    }
+
+    pub fn is_falsey(&self) -> bool {
+        match self {
+            Value::None => true,
+            Value::True => false,
+            Value::False => true,
+            Value::Integer(value) => *value == 0,
+            Value::Float(value) => *value == 0.0,
+            Value::String(value) => value.is_empty(),
+        }
+    }
 }
 
 impl Hash for Value {
@@ -97,12 +129,12 @@ impl Object {
         self.value == Value::None
     }
 
-    pub fn is_true(&self) -> bool {
-        self.value == Value::True
+    pub fn is_truthy(&self) -> bool {
+        self.value.is_truthy()
     }
 
-    pub fn is_false(&self) -> bool {
-        self.value == Value::False
+    pub fn is_falsey(&self) -> bool {
+        self.value.is_falsey()
     }
 
     pub fn is_integer(&self) -> bool {
