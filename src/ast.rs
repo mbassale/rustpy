@@ -29,6 +29,7 @@ pub enum Literal {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
     Empty,
+    Block(BlockExpression),
     Function(FunctionExpression),
     Call(CallExpression),
     If(IfExpression),
@@ -51,6 +52,11 @@ impl Program {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct BlockExpression {
+    pub exprs: Vec<Box<Expression>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct FunctionExpression {
     pub name: String,
     pub args: String,
@@ -67,7 +73,14 @@ pub struct CallExpression {
 pub struct IfExpression {
     pub condition: Box<Expression>,
     pub then_branch: Box<Expression>,
+    pub elif_branches: Vec<ElifExpression>,
     pub else_branch: Box<Expression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ElifExpression {
+    pub condition: Box<Expression>,
+    pub then_branch: Box<Expression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -1,6 +1,6 @@
 use crate::ast::{
-    AssignmentExpression, BinaryExpression, Expression, IfExpression, Literal, Operator, Program,
-    UnaryExpression,
+    AssignmentExpression, BinaryExpression, BlockExpression, ElifExpression, Expression,
+    IfExpression, Literal, Operator, Program, UnaryExpression,
 };
 use crate::token::Token;
 
@@ -8,6 +8,7 @@ use crate::token::Token;
 pub enum ParserError {
     InvalidOperator(String),
     InvalidPrimary(String),
+    InvalidExpression(String),
 }
 
 pub struct Parser {
@@ -19,7 +20,11 @@ pub struct Parser {
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
         Parser {
-            tokens,
+            // filter Token::NewLine
+            tokens: tokens
+                .into_iter()
+                .filter(|tok| tok != &Token::NewLine)
+                .collect(),
             index: 0,
             program: Program::new(),
         }
@@ -31,41 +36,100 @@ impl Parser {
         while self.index < self.tokens.len() && self.tokens[self.index] != Token::Eof {
             let expr = self.parse_expression()?;
             self.program.stmts.push(expr);
-            self.index += 1;
         }
 
         Ok(self.program.clone())
     }
 
     fn parse_expression(&mut self) -> Result<Box<Expression>, ParserError> {
-        if self.match_token(&Token::If) {
+        if self.match_token(&Token::Indent) {
+            self.parse_block_expression()
+        } else if self.match_token(&Token::If) {
             self.parse_if_expression()
         } else {
             self.parse_assignment()
         }
     }
 
+    fn parse_block_expression(&mut self) -> Result<Box<Expression>, ParserError> {
+        let mut exprs: Vec<Box<Expression>> = Vec::new();
+        while self.index < self.tokens.len()
+            && self.tokens[self.index] != Token::Dedent
+            && self.tokens[self.index] != Token::Eof
+        {
+            let expr = self.parse_expression()?;
+            exprs.push(expr);
+        }
+        self.match_token(&Token::Dedent);
+        Ok(Box::new(Expression::Block(BlockExpression { exprs })))
+    }
+
     fn parse_if_expression(&mut self) -> Result<Box<Expression>, ParserError> {
-        let condition = self.parse_expression()?;
-        let then_branch;
-        if self.match_token(&Token::Indent) {
-            then_branch = self.parse_expression()?;
-        } else {
-            return Err(ParserError::InvalidPrimary(format!(
-                "If statement without body"
-            )));
-        }
+        let mut if_expression = IfExpression {
+            condition: Box::new(Expression::Empty),
+            then_branch: Box::new(Expression::Empty),
+            elif_branches: Vec::new(),
+            else_branch: Box::new(Expression::Empty),
+        };
+        // Parse conditional
+        if_expression.condition = self.parse_expression()?;
+
+        // Check colon ':'
         if !self.match_token(&Token::Colon) {
-            return Err(ParserError::InvalidPrimary(String::from(
-                "If statement missing colon ':'",
+            return Err(ParserError::InvalidExpression(String::from(
+                "If expression missing colon ':'",
             )));
         }
-        let else_branch = Box::new(Expression::Empty);
-        Ok(Box::new(Expression::If(crate::ast::IfExpression {
-            condition,
-            then_branch,
-            else_branch,
-        })))
+
+        // Required a then branch
+        if self.match_token(&Token::Indent) {
+            if_expression.then_branch = self.parse_block_expression()?;
+        } else {
+            return Err(ParserError::InvalidExpression(format!(
+                "If expression without body"
+            )));
+        }
+
+        // Optional Elif branches
+        while self.match_token(&Token::Elif) {
+            let condition = self.parse_expression()?;
+            if self.match_token(&Token::Colon) {
+                if self.match_token(&Token::Indent) {
+                    let then_branch = self.parse_block_expression()?;
+                    if_expression.elif_branches.push(ElifExpression {
+                        condition,
+                        then_branch,
+                    });
+                } else {
+                    return Err(ParserError::InvalidExpression(String::from(
+                        "Elif expression without body",
+                    )));
+                }
+            } else {
+                return Err(ParserError::InvalidExpression(String::from(
+                    "Elif expression missing colon ':'",
+                )));
+            }
+        }
+
+        // Optional Else branch
+        if self.match_token(&Token::Else) {
+            if self.match_token(&Token::Colon) {
+                if self.match_token(&Token::Indent) {
+                    if_expression.else_branch = self.parse_block_expression()?;
+                } else {
+                    return Err(ParserError::InvalidExpression(String::from(
+                        "Else expression without body",
+                    )));
+                }
+            } else {
+                return Err(ParserError::InvalidExpression(String::from(
+                    "Else expression missing colon ':'",
+                )));
+            }
+        }
+
+        Ok(Box::new(Expression::If(if_expression)))
     }
 
     fn parse_assignment(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -403,6 +467,124 @@ mod tests {
                     lhs: Box::new(Expression::Literal(Literal::Integer(1))),
                     op: Operator::Less,
                     rhs: Box::new(Expression::Literal(Literal::Integer(2))),
+                }))],
+            ),
+        ]
+        .into_iter()
+        .for_each(|(tokens, exprs)| {
+            let mut parser = Parser::new(tokens);
+            let program = match parser.parse() {
+                Ok(program) => program,
+                Err(err) => panic!("ParseError: {:?}", err),
+            };
+            assert_eq!(program.stmts, exprs);
+        });
+    }
+
+    #[test]
+    fn test_if_statement() {
+        vec![
+            // If
+            (
+                vec![
+                    Token::If,
+                    Token::True,
+                    Token::Colon,
+                    Token::Indent,
+                    Token::True,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::If(IfExpression {
+                    condition: Box::new(Expression::Literal(Literal::True)),
+                    then_branch: Box::new(Expression::Block(BlockExpression {
+                        exprs: vec![Box::new(Expression::Literal(Literal::True))],
+                    })),
+                    elif_branches: Vec::new(),
+                    else_branch: Box::new(Expression::Empty),
+                }))],
+            ),
+            // If-Else
+            (
+                vec![
+                    Token::If,
+                    Token::True,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::True,
+                    Token::Dedent,
+                    Token::Else,
+                    Token::Colon,
+                    Token::Indent,
+                    Token::False,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::If(IfExpression {
+                    condition: Box::new(Expression::Literal(Literal::True)),
+                    then_branch: Box::new(Expression::Block(BlockExpression {
+                        exprs: vec![Box::new(Expression::Literal(Literal::True))],
+                    })),
+                    elif_branches: Vec::new(),
+                    else_branch: Box::new(Expression::Block(BlockExpression {
+                        exprs: vec![Box::new(Expression::Literal(Literal::False))],
+                    })),
+                }))],
+            ),
+            // If-Elif-Elif-Else
+            (
+                vec![
+                    // if True:
+                    Token::If,
+                    Token::True,
+                    Token::Colon,
+                    Token::Indent,
+                    Token::True,
+                    Token::Dedent,
+                    // elif False:
+                    Token::Elif,
+                    Token::False,
+                    Token::Colon,
+                    Token::Indent,
+                    Token::False,
+                    Token::Dedent,
+                    // elif True:
+                    Token::Elif,
+                    Token::True,
+                    Token::Colon,
+                    Token::Indent,
+                    Token::True,
+                    Token::Dedent,
+                    // else:
+                    Token::Else,
+                    Token::Colon,
+                    Token::Indent,
+                    Token::False,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::If(IfExpression {
+                    condition: Box::new(Expression::Literal(Literal::True)),
+                    then_branch: Box::new(Expression::Block(BlockExpression {
+                        exprs: vec![Box::new(Expression::Literal(Literal::True))],
+                    })),
+                    elif_branches: vec![
+                        ElifExpression {
+                            condition: Box::new(Expression::Literal(Literal::False)),
+                            then_branch: Box::new(Expression::Block(BlockExpression {
+                                exprs: vec![Box::new(Expression::Literal(Literal::False))],
+                            })),
+                        },
+                        ElifExpression {
+                            condition: Box::new(Expression::Literal(Literal::True)),
+                            then_branch: Box::new(Expression::Block(BlockExpression {
+                                exprs: vec![Box::new(Expression::Literal(Literal::True))],
+                            })),
+                        },
+                    ],
+                    else_branch: Box::new(Expression::Block(BlockExpression {
+                        exprs: vec![Box::new(Expression::Literal(Literal::False))],
+                    })),
                 }))],
             ),
         ]
