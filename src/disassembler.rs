@@ -42,7 +42,7 @@ impl Disassembler {
                 }
             };
             match op {
-                Bytecode::Nop => {
+                Bytecode::Nop | Bytecode::None | Bytecode::True | Bytecode::False => {
                     result.push(Instruction { op, index: None });
                     ip += SIZE_INSTRUCTION;
                 }

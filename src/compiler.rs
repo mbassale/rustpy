@@ -85,8 +85,15 @@ impl Compiler<'_> {
     }
 
     fn emit_literal(&self, chunk: &mut Chunk, literal: &Literal) {
-        let index = chunk.add_constant(literal);
-        chunk.emit(Bytecode::Const);
-        chunk.emit_index(index as u64);
+        match literal {
+            Literal::None => chunk.emit(Bytecode::None),
+            Literal::True => chunk.emit(Bytecode::True),
+            Literal::False => chunk.emit(Bytecode::False),
+            _ => {
+                let index = chunk.add_constant(literal);
+                chunk.emit(Bytecode::Const);
+                chunk.emit_index(index as u64);
+            }
+        };
     }
 }

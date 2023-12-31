@@ -49,6 +49,18 @@ impl Vm {
                 Bytecode::Nop => {
                     self.ip += SIZE_INSTRUCTION;
                 }
+                Bytecode::None => {
+                    self.stack.push(Object::new_none());
+                    self.ip += SIZE_INSTRUCTION;
+                }
+                Bytecode::True => {
+                    self.stack.push(Object::new_true());
+                    self.ip += SIZE_INSTRUCTION;
+                }
+                Bytecode::False => {
+                    self.stack.push(Object::new_false());
+                    self.ip += SIZE_INSTRUCTION;
+                }
                 Bytecode::Const => {
                     let index = self.chunk.get_data_u64(self.ip + 1);
                     let constant = &self.chunk.constants[index as usize];
