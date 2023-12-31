@@ -2,6 +2,7 @@ mod ast;
 mod bytecode;
 mod chunk;
 mod compiler;
+mod disassembler;
 mod lexer;
 mod object;
 mod parser;
@@ -12,6 +13,7 @@ mod vm;
 use symbol_table::SymbolTable;
 
 use crate::compiler::{Compiler, CompilerError};
+use crate::disassembler::{Disassembler, Instruction};
 use crate::lexer::Lexer;
 use crate::parser::{Parser, ParserError};
 use crate::token::Token;
@@ -60,6 +62,10 @@ impl Interpreter {
             Err(compiler_error) => return Err(InterpreterError::CompilerError(compiler_error)),
         };
         let chunk = dbg!(chunk);
+
+        let disassembler = Disassembler::new(chunk.clone());
+        let instructions = disassembler.disassemble();
+        dbg!(instructions);
 
         let result = match self.vm.interpret(&mut self.globals, chunk) {
             Ok(result) => result,

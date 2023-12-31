@@ -23,4 +23,7 @@ pub enum Bytecode {
     Sub = 0x56,
     Mul = 0x57,
     Div = 0x58,
+
+    // For disassembler usage
+    Unknown = 0xFF,
 }
