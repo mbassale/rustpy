@@ -1,8 +1,8 @@
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token {
     Empty,
-    Indent(usize),
-    Dedent(usize),
+    Indent,
+    Dedent,
     NewLine,
     None,
     True,

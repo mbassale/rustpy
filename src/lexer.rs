@@ -22,7 +22,7 @@ impl Iterator for Lexer {
 pub struct Lexer {
     index: usize,
     chars: Vec<char>,
-    indentation_level: Token,
+    indentation_level: usize,
     last_token: Token,
 }
 
@@ -31,7 +31,7 @@ impl Lexer {
         Lexer {
             index: 0,
             chars: source.chars().collect(),
-            indentation_level: Token::Indent(0),
+            indentation_level: 0,
             last_token: Token::Empty,
         }
     }
@@ -56,17 +56,12 @@ impl Lexer {
             }
             if self.last_token == Token::NewLine {
                 let new_indentation_level = self.index - start;
-                let current_indentation_level = match self.indentation_level {
-                    Token::Indent(level) => level,
-                    Token::Dedent(level) => level,
-                    _ => unreachable!("indentation_level has an incorrect token"),
-                };
-                if new_indentation_level > current_indentation_level {
-                    self.indentation_level = Token::Indent(new_indentation_level);
-                    return self.indentation_level.clone();
-                } else if new_indentation_level < current_indentation_level {
-                    self.indentation_level = Token::Dedent(new_indentation_level);
-                    return self.indentation_level.clone();
+                if new_indentation_level > self.indentation_level {
+                    self.indentation_level = new_indentation_level;
+                    return Token::Indent;
+                } else if new_indentation_level < self.indentation_level {
+                    self.indentation_level = new_indentation_level;
+                    return Token::Dedent;
                 }
             }
         }
@@ -438,22 +433,22 @@ def test(x):
                 Token::RightParen,
                 Token::Colon,
                 Token::NewLine,
-                Token::Indent(2),
+                Token::Indent,
                 Token::If,
                 Token::Identifier(String::from("x")),
                 Token::Greater,
                 Token::Integer(0),
                 Token::Colon,
                 Token::NewLine,
-                Token::Indent(4),
+                Token::Indent,
                 Token::Return,
                 Token::Integer(1),
                 Token::NewLine,
-                Token::Dedent(2),
+                Token::Dedent,
                 Token::Else,
                 Token::Colon,
                 Token::NewLine,
-                Token::Indent(4),
+                Token::Indent,
                 Token::Return,
                 Token::Integer(0),
                 Token::NewLine,

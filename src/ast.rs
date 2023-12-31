@@ -28,8 +28,10 @@ pub enum Literal {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expression {
+    Empty,
     Function(FunctionExpression),
     Call(CallExpression),
+    If(IfExpression),
     Assignment(AssignmentExpression),
     Unary(UnaryExpression),
     Binary(BinaryExpression),
@@ -59,6 +61,13 @@ pub struct FunctionExpression {
 pub struct CallExpression {
     pub callable: Box<Expression>,
     pub args: Vec<Box<Expression>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub then_branch: Box<Expression>,
+    pub else_branch: Box<Expression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

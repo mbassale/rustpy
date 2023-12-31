@@ -1,5 +1,6 @@
 use crate::ast::{
-    AssignmentExpression, BinaryExpression, Expression, Literal, Operator, Program, UnaryExpression,
+    AssignmentExpression, BinaryExpression, Expression, IfExpression, Literal, Operator, Program,
+    UnaryExpression,
 };
 use crate::token::Token;
 
@@ -37,7 +38,34 @@ impl Parser {
     }
 
     fn parse_expression(&mut self) -> Result<Box<Expression>, ParserError> {
-        self.parse_assignment()
+        if self.match_token(&Token::If) {
+            self.parse_if_expression()
+        } else {
+            self.parse_assignment()
+        }
+    }
+
+    fn parse_if_expression(&mut self) -> Result<Box<Expression>, ParserError> {
+        let condition = self.parse_expression()?;
+        let then_branch;
+        if self.match_token(&Token::Indent) {
+            then_branch = self.parse_expression()?;
+        } else {
+            return Err(ParserError::InvalidPrimary(format!(
+                "If statement without body"
+            )));
+        }
+        if !self.match_token(&Token::Colon) {
+            return Err(ParserError::InvalidPrimary(String::from(
+                "If statement missing colon ':'",
+            )));
+        }
+        let else_branch = Box::new(Expression::Empty);
+        Ok(Box::new(Expression::If(crate::ast::IfExpression {
+            condition,
+            then_branch,
+            else_branch,
+        })))
     }
 
     fn parse_assignment(&mut self) -> Result<Box<Expression>, ParserError> {
