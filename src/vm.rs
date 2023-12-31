@@ -1,6 +1,7 @@
 use crate::bytecode::{Bytecode, SIZE_INDEX, SIZE_INSTRUCTION};
 use crate::chunk::Chunk;
 use crate::object::{Object, Value};
+use crate::symbol_table::SymbolTable;
 
 #[derive(Clone, Debug)]
 pub enum VmError {
@@ -16,16 +17,23 @@ pub struct Vm {
 }
 
 impl Vm {
-    pub fn new(chunk: Chunk) -> Vm {
+    pub fn new() -> Vm {
         Vm {
             stack: Vec::new(),
-            chunk,
+            chunk: Chunk::new(),
             ip: 0,
         }
     }
 
-    pub fn interpret(&mut self) -> Result<Object, VmError> {
+    pub fn interpret(
+        &mut self,
+        globals: &mut SymbolTable,
+        chunk: Chunk,
+    ) -> Result<Object, VmError> {
+        dbg!(&globals);
+        self.load_chunk(chunk)?;
         while self.ip < self.chunk.data.len() {
+            dbg!(&self.stack);
             let op = self.chunk.data[self.ip];
             let op = match Bytecode::try_from(op) {
                 Ok(op) => op,
@@ -52,7 +60,7 @@ impl Vm {
                 // Globals Manipulation
                 Bytecode::GetGlobal => {
                     let index = self.chunk.get_data_u64(self.ip + 1);
-                    let object = match self.chunk.globals.get(index) {
+                    let object = match globals.get(index) {
                         Some(obj) => obj,
                         None => {
                             return Err(VmError::UndefinedName(format!(
@@ -67,9 +75,9 @@ impl Vm {
                 Bytecode::SetGlobal => {
                     let rhs = self.stack.pop().unwrap();
                     let mut lhs = self.stack.pop().unwrap();
-                    let index = self.chunk.globals.get_index(&lhs.name);
+                    let index = globals.get_index(&lhs.name);
                     lhs.value = rhs.value.clone();
-                    self.chunk.globals.set(index, lhs.clone());
+                    globals.set(index, lhs.clone());
                     self.stack.push(lhs);
                     self.ip += SIZE_INSTRUCTION;
                 }
@@ -91,6 +99,13 @@ impl Vm {
             _ => Object::new_none(),
         };
         Ok(result)
+    }
+
+    fn load_chunk(&mut self, chunk: Chunk) -> Result<(), VmError> {
+        self.chunk = chunk;
+        self.ip = 0;
+        self.stack.clear();
+        Ok(())
     }
 }
 

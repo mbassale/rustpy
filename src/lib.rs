@@ -4,10 +4,12 @@ mod chunk;
 mod compiler;
 mod lexer;
 mod object;
-mod symbol_table;
 mod parser;
+mod symbol_table;
 mod token;
 mod vm;
+
+use symbol_table::SymbolTable;
 
 use crate::compiler::{Compiler, CompilerError};
 use crate::lexer::Lexer;
@@ -24,13 +26,17 @@ pub enum InterpreterError {
 }
 
 pub struct Interpreter {
+    globals: SymbolTable,
     source: String,
+    vm: Vm,
 }
 
 impl Interpreter {
     pub fn new() -> Interpreter {
         Interpreter {
+            globals: SymbolTable::new(),
             source: String::new(),
+            vm: Vm::new(),
         }
     }
 
@@ -48,15 +54,14 @@ impl Interpreter {
         };
         let program = dbg!(program);
 
-        let mut compiler = Compiler::new(program);
+        let mut compiler = Compiler::new(program, &mut self.globals);
         let chunk = match compiler.compile() {
             Ok(chunk) => chunk,
             Err(compiler_error) => return Err(InterpreterError::CompilerError(compiler_error)),
         };
         let chunk = dbg!(chunk);
 
-        let mut vm = Vm::new(chunk);
-        let result = match vm.interpret() {
+        let result = match self.vm.interpret(&mut self.globals, chunk) {
             Ok(result) => result,
             Err(vm_error) => return Err(InterpreterError::VmError(vm_error)),
         };

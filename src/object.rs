@@ -27,7 +27,7 @@ impl Hash for Value {
             Self::False => (),
             Self::Float(value) => {
                 state.write_u128(*value as u128);
-            },
+            }
             Self::Integer(value) => value.hash(state),
             Self::String(value) => value.hash(state),
         }
@@ -43,7 +43,7 @@ impl Object {
         let mut object = Object {
             id: 0,
             name: String::new(),
-            value: value.clone()
+            value: value.clone(),
         };
         let mut hasher = DefaultHasher::new();
         value.hash(&mut hasher);
@@ -72,7 +72,7 @@ impl Object {
         Object {
             id: 2,
             name: String::from("False"),
-            value: Value::False
+            value: Value::False,
         }
     }
 

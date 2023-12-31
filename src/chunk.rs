@@ -1,5 +1,4 @@
 use crate::ast::Literal;
-use crate::symbol_table::SymbolTable;
 use crate::bytecode::Bytecode;
 
 #[derive(Clone, Debug)]
@@ -7,7 +6,6 @@ pub struct Chunk {
     pub name: String,
     pub data: Vec<u8>,
     pub constants: Vec<Literal>,
-    pub globals: SymbolTable,
 }
 
 impl Chunk {
@@ -16,7 +14,6 @@ impl Chunk {
             name: String::from("__main__"),
             data: Vec::new(),
             constants: Vec::new(),
-            globals: SymbolTable::new(),
         }
     }
 
@@ -27,10 +24,6 @@ impl Chunk {
             return u64::from_ne_bytes(array);
         }
         unreachable!();
-    }
-
-    pub fn add_global(&mut self, identifier: &str) -> u64 {
-        self.globals.insert(identifier, None)
     }
 
     pub fn add_constant(&mut self, literal: &Literal) -> u64 {

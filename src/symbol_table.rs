@@ -37,6 +37,10 @@ impl SymbolTable {
         self.last_idx
     }
 
+    pub fn extend(&mut self, symbol_table: SymbolTable) {
+        self.data.extend(symbol_table.data);
+    }
+
     pub fn contains(&self, id: u64) -> bool {
         self.data.contains_key(&id)
     }
@@ -52,5 +56,9 @@ impl SymbolTable {
             }
         }
         unreachable!();
+    }
+
+    pub fn clear(&mut self) {
+        self.data.clear();
     }
 }

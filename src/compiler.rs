@@ -3,17 +3,19 @@ use crate::ast::{
 };
 use crate::bytecode::Bytecode;
 use crate::chunk::Chunk;
+use crate::symbol_table::SymbolTable;
 
 #[derive(Clone, Debug)]
 pub enum CompilerError {}
 
-pub struct Compiler {
+pub struct Compiler<'a> {
     program: Program,
+    globals: &'a mut SymbolTable,
 }
 
-impl Compiler {
-    pub fn new(program: Program) -> Compiler {
-        Compiler { program }
+impl Compiler<'_> {
+    pub fn new(program: Program, globals: &mut SymbolTable) -> Compiler {
+        Compiler { program, globals }
     }
 
     pub fn compile(&mut self) -> Result<Chunk, CompilerError> {
@@ -23,6 +25,7 @@ impl Compiler {
     fn emit_program(&mut self) -> Result<Chunk, CompilerError> {
         let mut chunk = Chunk::new();
         self.program
+            .clone()
             .stmts
             .iter()
             .for_each(|expr: &Box<Expression>| {
@@ -31,7 +34,7 @@ impl Compiler {
         Ok(chunk)
     }
 
-    fn emit_expression(&self, chunk: &mut Chunk, expr: &Expression) {
+    fn emit_expression(&mut self, chunk: &mut Chunk, expr: &Expression) {
         match expr {
             Expression::Assignment(assignment) => self.emit_assignment_op(chunk, &assignment),
             Expression::Unary(unary) => self.emit_unary_op(chunk, &unary),
@@ -42,25 +45,30 @@ impl Compiler {
         };
     }
 
-    fn emit_assignment_op(&self, chunk: &mut Chunk, assignment_expr: &AssignmentExpression) {
+    fn emit_assignment_op(&mut self, chunk: &mut Chunk, assignment_expr: &AssignmentExpression) {
         self.emit_expression(chunk, assignment_expr.lhs.as_ref());
         self.emit_expression(chunk, assignment_expr.rhs.as_ref());
         chunk.emit(Bytecode::SetGlobal);
     }
 
-    fn emit_unary_op(&self, chunk: &mut Chunk, unary_expr: &UnaryExpression) {
+    fn emit_unary_op(&mut self, chunk: &mut Chunk, unary_expr: &UnaryExpression) {
         self.emit_expression(chunk, unary_expr.expr.as_ref());
         self.emit_op(chunk, &unary_expr.op);
     }
 
-    fn emit_binary_op(&self, chunk: &mut Chunk, binary_expr: &BinaryExpression) {
+    fn emit_binary_op(&mut self, chunk: &mut Chunk, binary_expr: &BinaryExpression) {
         self.emit_expression(chunk, binary_expr.lhs.as_ref());
         self.emit_expression(chunk, binary_expr.rhs.as_ref());
         self.emit_op(chunk, &binary_expr.op);
     }
 
-    fn emit_variable_op(&self, chunk: &mut Chunk, identifier: &str) {
-        let index = chunk.add_global(identifier);
+    fn emit_variable_op(&mut self, chunk: &mut Chunk, identifier: &str) {
+        let index: u64;
+        if self.globals.contains_name(identifier) {
+            index = self.globals.get_index(identifier);
+        } else {
+            index = self.globals.insert(identifier, None);
+        }
         chunk.emit(Bytecode::GetGlobal);
         chunk.emit_index(index);
     }
