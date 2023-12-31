@@ -58,7 +58,7 @@ impl Parser {
         let mut expr = self.parse_equality()?;
 
         while self.match_token(&Token::Or) || self.match_token(&Token::And) {
-            let op = self.get_operator(self.previous_token())?;
+            let op = self.get_binary_operator(self.previous_token())?;
             let rhs = self.parse_equality()?;
             expr = Box::new(Expression::Binary(BinaryExpression { lhs: expr, op, rhs }));
         }
@@ -70,7 +70,7 @@ impl Parser {
         let mut expr = self.parse_comparison()?;
 
         while self.match_token(&Token::EqualEqual) || self.match_token(&Token::BangEqual) {
-            let op = self.get_operator(self.previous_token())?;
+            let op = self.get_binary_operator(self.previous_token())?;
             let rhs = self.parse_comparison()?;
             expr = Box::new(Expression::Binary(BinaryExpression { lhs: expr, op, rhs }));
         }
@@ -86,7 +86,7 @@ impl Parser {
             || self.match_token(&Token::Less)
             || self.match_token(&Token::LessEqual)
         {
-            let op = self.get_operator(self.previous_token())?;
+            let op = self.get_binary_operator(self.previous_token())?;
             let rhs = self.parse_term()?;
             expr = Box::new(Expression::Binary(BinaryExpression { lhs: expr, op, rhs }));
         }
@@ -98,7 +98,7 @@ impl Parser {
         let mut expr = self.parse_factor()?;
 
         while self.match_token(&Token::Plus) || self.match_token(&Token::Minus) {
-            let op = self.get_operator(self.previous_token())?;
+            let op = self.get_binary_operator(self.previous_token())?;
             let rhs = self.parse_factor()?;
             expr = Box::new(Expression::Binary(BinaryExpression { lhs: expr, op, rhs }));
         }
@@ -110,7 +110,7 @@ impl Parser {
         let mut expr = self.parse_unary()?;
 
         while self.match_token(&Token::Star) || self.match_token(&Token::Slash) {
-            let op = self.get_operator(self.previous_token())?;
+            let op = self.get_binary_operator(self.previous_token())?;
             let rhs = self.parse_unary()?;
             expr = Box::new(Expression::Binary(BinaryExpression { lhs: expr, op, rhs }));
         }
@@ -120,7 +120,17 @@ impl Parser {
 
     fn parse_unary(&mut self) -> Result<Box<Expression>, ParserError> {
         if self.match_token(&Token::Bang) || self.match_token(&Token::Minus) {
-            let op = self.get_operator(self.previous_token())?;
+            let previous_token = self.previous_token();
+            let op = match previous_token {
+                Token::Bang => Operator::Not,
+                Token::Minus => Operator::Neg,
+                _ => {
+                    return Err(ParserError::InvalidOperator(format!(
+                        "Invalid unary operator: {:?}",
+                        previous_token
+                    )))
+                }
+            };
             let rhs = self.parse_unary()?;
             return Ok(Box::new(Expression::Unary(UnaryExpression {
                 op,
@@ -155,13 +165,13 @@ impl Parser {
         expr
     }
 
-    fn get_operator(&self, token: &Token) -> Result<Operator, ParserError> {
+    fn get_binary_operator(&self, token: &Token) -> Result<Operator, ParserError> {
         match token {
             Token::And => Ok(Operator::And),
             Token::Or => Ok(Operator::Or),
             Token::EqualEqual => Ok(Operator::Equal),
             Token::BangEqual => Ok(Operator::NotEqual),
-            Token::Bang => Ok(Operator::Neg),
+            Token::Bang => Ok(Operator::Not),
             Token::Less => Ok(Operator::Less),
             Token::LessEqual => Ok(Operator::LessEqual),
             Token::Greater => Ok(Operator::Greater),
@@ -171,7 +181,7 @@ impl Parser {
             Token::Star => Ok(Operator::Mul),
             Token::Slash => Ok(Operator::Div),
             _ => Err(ParserError::InvalidOperator(format!(
-                "Invalid Operator: {:?}",
+                "Invalid binary operator: {:?}",
                 token
             ))),
         }
@@ -292,6 +302,35 @@ mod tests {
                         lhs: Box::new(Expression::Variable(String::from("var2"))),
                         rhs: Box::new(Expression::Literal(Literal::True)),
                     })),
+                }))],
+            ),
+        ]
+        .into_iter()
+        .for_each(|(tokens, exprs)| {
+            let mut parser = Parser::new(tokens);
+            let program = match parser.parse() {
+                Ok(program) => program,
+                Err(err) => panic!("ParseError: {:?}", err),
+            };
+            assert_eq!(program.stmts, exprs);
+        });
+    }
+
+    #[test]
+    fn test_unary_expressions() {
+        vec![
+            (
+                vec![Token::Bang, Token::True, Token::Eof],
+                vec![Box::new(Expression::Unary(UnaryExpression {
+                    op: Operator::Not,
+                    expr: Box::new(Expression::Literal(Literal::True)),
+                }))],
+            ),
+            (
+                vec![Token::Minus, Token::Integer(1), Token::Eof],
+                vec![Box::new(Expression::Unary(UnaryExpression {
+                    op: Operator::Neg,
+                    expr: Box::new(Expression::Literal(Literal::Integer(1))),
                 }))],
             ),
         ]

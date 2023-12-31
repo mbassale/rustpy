@@ -49,6 +49,8 @@ impl Vm {
                 Bytecode::Nop => {
                     self.ip += SIZE_INSTRUCTION;
                 }
+
+                // Literals
                 Bytecode::None => {
                     self.stack.push(Object::new_none());
                     self.ip += SIZE_INSTRUCTION;
@@ -94,6 +96,30 @@ impl Vm {
                     self.ip += SIZE_INSTRUCTION;
                 }
 
+                // Unary Ops
+                Bytecode::Not => {
+                    let rhs = self.stack.pop().unwrap();
+                    let result = Object::new(Value::new_from_bool(rhs.is_falsey()));
+                    self.stack.push(result);
+                    self.ip += SIZE_INSTRUCTION;
+                }
+                Bytecode::Neg => {
+                    let rhs = self.stack.pop().unwrap();
+                    let result = match rhs.value {
+                        Value::Integer(value) => Value::Integer(-value),
+                        Value::Float(value) => Value::Float(-value),
+                        _ => {
+                            return Err(VmError::InvalidOperand(format!(
+                                "TypeError: unsupported operand type for '-': {:?}",
+                                rhs.value
+                            )));
+                        }
+                    };
+                    self.stack.push(Object::new(result));
+                    self.ip += SIZE_INSTRUCTION;
+                }
+
+                // Binary Ops
                 Bytecode::And
                 | Bytecode::Or
                 | Bytecode::Equal

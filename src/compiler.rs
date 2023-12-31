@@ -75,6 +75,8 @@ impl Compiler<'_> {
 
     fn emit_op(&self, chunk: &mut Chunk, op: &Operator) {
         match op {
+            Operator::Not => chunk.emit(Bytecode::Not),
+            Operator::Neg => chunk.emit(Bytecode::Neg),
             Operator::And => chunk.emit(Bytecode::And),
             Operator::Or => chunk.emit(Bytecode::Or),
             Operator::Equal => chunk.emit(Bytecode::Equal),
@@ -83,7 +85,6 @@ impl Compiler<'_> {
             Operator::LessEqual => chunk.emit(Bytecode::LessEqual),
             Operator::Greater => chunk.emit(Bytecode::Greater),
             Operator::GreaterEqual => chunk.emit(Bytecode::GreaterEqual),
-            Operator::Neg => chunk.emit(Bytecode::Neg),
             Operator::Add => chunk.emit(Bytecode::Add),
             Operator::Sub => chunk.emit(Bytecode::Sub),
             Operator::Mul => chunk.emit(Bytecode::Mul),

@@ -1,12 +1,13 @@
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
+    Not,
+    Neg,
     Add,
     Sub,
     Mul,
     Div,
     And,
     Or,
-    Neg,
     Equal,
     NotEqual,
     Less,

@@ -17,6 +17,10 @@ pub enum Bytecode {
     // Stack Manipulation
     Pop = 0x10,
 
+    // Unary Ops
+    Not = 0x11,
+    Neg = 0x12,
+
     // Globals Manipulation
     SetGlobal = 0x20,
     GetGlobal = 0x21,
@@ -31,7 +35,6 @@ pub enum Bytecode {
     Greater = 0x56,
     GreaterEqual = 0x57,
 
-    Neg = 0x58,
     Add = 0x59,
     Sub = 0x60,
     Mul = 0x61,
