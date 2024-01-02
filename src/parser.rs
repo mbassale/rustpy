@@ -1,6 +1,6 @@
 use crate::ast::{
     AssignmentExpression, BinaryExpression, BlockExpression, ElifExpression, Expression,
-    IfExpression, Literal, Operator, Program, UnaryExpression,
+    IfExpression, Literal, Operator, Program, UnaryExpression, WhileExpression,
 };
 use crate::token::Token;
 
@@ -46,6 +46,8 @@ impl Parser {
             self.parse_block_expression()
         } else if self.match_token(&Token::If) {
             self.parse_if_expression()
+        } else if self.match_token(&Token::While) {
+            self.parse_while_expression()
         } else {
             self.parse_assignment()
         }
@@ -130,6 +132,24 @@ impl Parser {
         }
 
         Ok(Box::new(Expression::If(if_expression)))
+    }
+
+    fn parse_while_expression(&mut self) -> Result<Box<Expression>, ParserError> {
+        let condition = self.parse_expression()?;
+
+        let body;
+        if self.match_token(&Token::Colon) {
+            body = self.parse_expression()?;
+        } else {
+            return Err(ParserError::InvalidExpression(String::from(
+                "While expression missing colon ':'",
+            )));
+        }
+
+        Ok(Box::new(Expression::While(WhileExpression {
+            condition,
+            body,
+        })))
     }
 
     fn parse_assignment(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -588,6 +608,38 @@ mod tests {
                 }))],
             ),
         ]
+        .into_iter()
+        .for_each(|(tokens, exprs)| {
+            let mut parser = Parser::new(tokens);
+            let program = match parser.parse() {
+                Ok(program) => program,
+                Err(err) => panic!("ParseError: {:?}", err),
+            };
+            assert_eq!(program.stmts, exprs);
+        });
+    }
+
+    #[test]
+    fn test_while_expression() {
+        vec![(
+            vec![
+                Token::While,
+                Token::True,
+                Token::Colon,
+                Token::NewLine,
+                Token::Indent,
+                Token::True,
+                Token::True,
+                Token::Dedent,
+                Token::Eof,
+            ],
+            vec![Box::new(Expression::While(WhileExpression {
+                condition: Box::new(Expression::Literal(Literal::True)),
+                body: Box::new(Expression::Block(BlockExpression {
+                    exprs: vec![Box::new(Expression::Literal(Literal::True)), Box::new(Expression::Literal(Literal::True))],
+                })),
+            }))],
+        )]
         .into_iter()
         .for_each(|(tokens, exprs)| {
             let mut parser = Parser::new(tokens);

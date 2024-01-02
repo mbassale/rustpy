@@ -33,6 +33,7 @@ pub enum Expression {
     Function(FunctionExpression),
     Call(CallExpression),
     If(IfExpression),
+    While(WhileExpression),
     Assignment(AssignmentExpression),
     Unary(UnaryExpression),
     Binary(BinaryExpression),
@@ -81,6 +82,12 @@ pub struct IfExpression {
 pub struct ElifExpression {
     pub condition: Box<Expression>,
     pub then_branch: Box<Expression>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct WhileExpression {
+    pub condition: Box<Expression>,
+    pub body: Box<Expression>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
