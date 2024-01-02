@@ -33,7 +33,6 @@ impl Vm {
         dbg!(&globals);
         self.load_chunk(chunk)?;
         while self.ip < self.chunk.data.len() {
-            dbg!(&self.stack);
             let op = self.chunk.data[self.ip];
             let op = match Bytecode::try_from(op) {
                 Ok(op) => op,
@@ -44,6 +43,8 @@ impl Vm {
                     )))
                 }
             };
+            println!("IP: {:X} OpCode: {:?}", self.ip, op);
+            dbg!(&self.stack);
 
             match op {
                 Bytecode::Nop => {
@@ -64,7 +65,7 @@ impl Vm {
                     self.ip += SIZE_INSTRUCTION;
                 }
                 Bytecode::Const => {
-                    let index = self.chunk.get_data_u64(self.ip + 1);
+                    let index = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
                     let constant = &self.chunk.constants[index as usize];
                     let object = Object::from_literal(&constant);
                     self.stack.push(object);
@@ -73,7 +74,7 @@ impl Vm {
 
                 // Globals Manipulation
                 Bytecode::GetGlobal => {
-                    let index = self.chunk.get_data_u64(self.ip + 1);
+                    let index = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
                     let object = match globals.get(index) {
                         Some(obj) => obj,
                         None => {
@@ -94,6 +95,37 @@ impl Vm {
                     globals.set(index, lhs.clone());
                     self.stack.push(lhs);
                     self.ip += SIZE_INSTRUCTION;
+                }
+
+                // Control Flow
+                Bytecode::Jump => {
+                    let addr_offset = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                    println!(
+                        "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
+                        op,
+                        self.ip,
+                        addr_offset,
+                        self.ip + addr_offset as usize
+                    );
+                    self.ip += addr_offset as usize;
+                }
+
+                Bytecode::JumpIfFalse => {
+                    // we remove the conditional value from the stack
+                    let conditional_value = self.stack.pop().unwrap();
+                    if conditional_value.is_falsey() {
+                        let addr_offset = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                        println!(
+                            "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
+                            op,
+                            self.ip,
+                            addr_offset,
+                            self.ip + addr_offset as usize
+                        );
+                        self.ip += addr_offset as usize;
+                    } else {
+                        self.ip += SIZE_INSTRUCTION + SIZE_INDEX;
+                    }
                 }
 
                 // Unary Ops

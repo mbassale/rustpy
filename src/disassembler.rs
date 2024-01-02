@@ -4,6 +4,7 @@ use crate::bytecode::{Bytecode, SIZE_INDEX, SIZE_INSTRUCTION};
 use crate::chunk::Chunk;
 
 pub struct Instruction {
+    ip: usize,
     op: Bytecode,
     index: Option<u64>,
 }
@@ -11,8 +12,11 @@ pub struct Instruction {
 impl Debug for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.index {
-            Some(index) => f.write_fmt(format_args!("({:?}, {})", self.op, index)),
-            None => f.write_fmt(format_args!("({:?})", self.op)),
+            Some(index) => f.write_fmt(format_args!(
+                "{:08X}: {:?}, dec: {} hex: Ox{:X}",
+                self.ip, self.op, index, index
+            )),
+            None => f.write_fmt(format_args!("{:08X}: {:?}", self.ip, self.op)),
         }
     }
 }
@@ -35,6 +39,7 @@ impl Disassembler {
                 Ok(op) => op,
                 Err(_) => {
                     result.push(Instruction {
+                        ip,
                         op: Bytecode::Unknown,
                         index: None,
                     });
@@ -43,33 +48,72 @@ impl Disassembler {
             };
             match op {
                 Bytecode::Nop | Bytecode::None | Bytecode::True | Bytecode::False => {
-                    result.push(Instruction { op, index: None });
+                    result.push(Instruction {
+                        ip,
+                        op,
+                        index: None,
+                    });
                     ip += SIZE_INSTRUCTION;
                 }
+
                 Bytecode::Const => {
                     result.push(Instruction {
+                        ip,
                         op,
-                        index: Some(self.chunk.get_data_u64(ip + 1)),
+                        index: self.chunk.get_data_u64_safe(ip + 1),
                     });
                     ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
                 Bytecode::SetGlobal => {
-                    result.push(Instruction { op, index: None });
+                    result.push(Instruction {
+                        ip,
+                        op,
+                        index: None,
+                    });
                     ip += SIZE_INSTRUCTION;
                 }
                 Bytecode::GetGlobal => {
                     result.push(Instruction {
+                        ip,
                         op,
-                        index: Some(self.chunk.get_data_u64(ip + 1)),
+                        index: self.chunk.get_data_u64_safe(ip + 1),
                     });
                     ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
-                Bytecode::Neg | Bytecode::Add | Bytecode::Sub | Bytecode::Mul | Bytecode::Div => {
-                    result.push(Instruction { op, index: None });
+
+                Bytecode::Jump | Bytecode::JumpIfFalse => {
+                    result.push(Instruction {
+                        ip,
+                        op,
+                        index: self.chunk.get_data_u64_safe(ip + 1),
+                    });
+                    ip += SIZE_INSTRUCTION + SIZE_INDEX;
+                }
+
+                Bytecode::Not
+                | Bytecode::Neg
+                | Bytecode::And
+                | Bytecode::Or
+                | Bytecode::Equal
+                | Bytecode::NotEqual
+                | Bytecode::Less
+                | Bytecode::LessEqual
+                | Bytecode::Greater
+                | Bytecode::GreaterEqual
+                | Bytecode::Add
+                | Bytecode::Sub
+                | Bytecode::Mul
+                | Bytecode::Div => {
+                    result.push(Instruction {
+                        ip,
+                        op,
+                        index: None,
+                    });
                     ip += SIZE_INSTRUCTION;
                 }
                 _ => {
                     result.push(Instruction {
+                        ip,
                         op: Bytecode::Unknown,
                         index: None,
                     });

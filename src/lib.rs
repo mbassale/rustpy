@@ -13,7 +13,7 @@ mod vm;
 use symbol_table::SymbolTable;
 
 use crate::compiler::{Compiler, CompilerError};
-use crate::disassembler::{Disassembler, Instruction};
+use crate::disassembler::Disassembler;
 use crate::lexer::Lexer;
 use crate::parser::{Parser, ParserError};
 use crate::token::Token;
@@ -42,7 +42,7 @@ impl Interpreter {
         }
     }
 
-    pub fn run(&mut self, source: &str) -> Result<(), InterpreterError> {
+    pub fn run(&mut self, source: &str) -> Result<String, InterpreterError> {
         self.source = String::from(source);
 
         let tokens: Vec<Token> = Lexer::new(&self.source).into_iter().collect();
@@ -71,9 +71,9 @@ impl Interpreter {
             Ok(result) => result,
             Err(vm_error) => return Err(InterpreterError::VmError(vm_error)),
         };
-        dbg!(result);
+        let result = dbg!(result);
 
-        Ok(())
+        Ok(format!("{:?}", result.value))
     }
 
     fn check_lexer_errors(&self, tokens: &Vec<Token>) -> Result<(), InterpreterError> {

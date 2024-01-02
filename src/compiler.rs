@@ -1,5 +1,6 @@
 use crate::ast::{
-    AssignmentExpression, BinaryExpression, Expression, Literal, Operator, Program, UnaryExpression,
+    AssignmentExpression, BinaryExpression, BlockExpression, Expression, IfExpression, Literal,
+    Operator, Program, UnaryExpression,
 };
 use crate::bytecode::Bytecode;
 use crate::chunk::Chunk;
@@ -31,18 +32,78 @@ impl Compiler<'_> {
             .for_each(|expr: &Box<Expression>| {
                 self.emit_expression(&mut chunk, expr.as_ref());
             });
+        // Always finish with a Nop opcode
+        chunk.emit(Bytecode::Nop);
         Ok(chunk)
     }
 
     fn emit_expression(&mut self, chunk: &mut Chunk, expr: &Expression) {
         match expr {
+            Expression::Block(block_expression) => {
+                self.emit_block_expression(chunk, &block_expression)
+            }
+            Expression::If(if_expression) => self.emit_if_expression(chunk, &if_expression),
             Expression::Assignment(assignment) => self.emit_assignment_op(chunk, &assignment),
             Expression::Unary(unary) => self.emit_unary_op(chunk, &unary),
             Expression::Binary(binary) => self.emit_binary_op(chunk, &binary),
             Expression::Variable(value) => self.emit_variable_op(chunk, &value),
             Expression::Literal(identifier) => self.emit_literal(chunk, &identifier),
+            Expression::Empty => chunk.emit(Bytecode::Nop),
             _ => (),
         };
+    }
+
+    fn emit_block_expression(&mut self, chunk: &mut Chunk, block_expr: &BlockExpression) {
+        block_expr.exprs.iter().for_each(|expr| {
+            self.emit_expression(chunk, expr.as_ref());
+        });
+    }
+
+    fn emit_if_expression(&mut self, chunk: &mut Chunk, if_expr: &IfExpression) {
+        // Emit If branch
+        let mut exit_jump_addrs: Vec<u64> = Vec::new();
+
+        let exit_jump_addr = self.emit_if_branch(
+            chunk,
+            if_expr.condition.as_ref(),
+            if_expr.then_branch.as_ref(),
+        );
+        exit_jump_addrs.push(exit_jump_addr);
+
+        // Emit Elif branches
+        if_expr.elif_branches.iter().for_each(|elif_expr| {
+            let exit_jump_addr = self.emit_if_branch(
+                chunk,
+                elif_expr.condition.as_ref(),
+                elif_expr.then_branch.as_ref(),
+            );
+            exit_jump_addrs.push(exit_jump_addr);
+        });
+
+        // Emit Else branch
+        self.emit_expression(chunk, if_expr.else_branch.as_ref());
+
+        // Patch exit addresses to prevent fallthrough
+        let next_addr = chunk.size();
+        exit_jump_addrs.iter().for_each(|addr| {
+            chunk.patch_jump_addr(*addr, next_addr);
+        });
+    }
+
+    fn emit_if_branch(
+        &mut self,
+        chunk: &mut Chunk,
+        condition: &Expression,
+        then_branch: &Expression,
+    ) -> u64 {
+        self.emit_expression(chunk, condition);
+        chunk.emit(Bytecode::JumpIfFalse);
+        let jump_offset_addr = chunk.emit_index(0);
+        self.emit_expression(chunk, then_branch);
+        chunk.emit(Bytecode::Jump);
+        let exit_offset_addr = chunk.emit_index(0);
+        chunk.patch_jump_addr(jump_offset_addr, chunk.size());
+        exit_offset_addr
     }
 
     fn emit_assignment_op(&mut self, chunk: &mut Chunk, assignment_expr: &AssignmentExpression) {

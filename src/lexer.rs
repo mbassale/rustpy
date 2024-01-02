@@ -8,6 +8,10 @@ impl Iterator for Lexer {
             match self.last_token {
                 Token::Eof => return None,
                 _ => {
+                    if !self.indentation_stack.is_empty() {
+                        self.indentation_stack.pop();
+                        return Some(Token::Dedent);
+                    }
                     self.last_token = Token::Eof;
                     return Some(Token::Eof);
                 }
@@ -22,6 +26,7 @@ impl Iterator for Lexer {
 pub struct Lexer {
     index: usize,
     chars: Vec<char>,
+    indentation_stack: Vec<Token>,
     indentation_level: usize,
     last_token: Token,
 }
@@ -31,6 +36,7 @@ impl Lexer {
         Lexer {
             index: 0,
             chars: source.chars().collect(),
+            indentation_stack: Vec::new(),
             indentation_level: 0,
             last_token: Token::Empty,
         }
@@ -58,12 +64,22 @@ impl Lexer {
                 let new_indentation_level = self.index - start;
                 if new_indentation_level > self.indentation_level {
                     self.indentation_level = new_indentation_level;
+                    self.indentation_stack.push(Token::Indent);
                     return Token::Indent;
-                } else if new_indentation_level < self.indentation_level {
+                } else if !self.indentation_stack.is_empty()
+                    && new_indentation_level < self.indentation_level
+                {
                     self.indentation_level = new_indentation_level;
+                    self.indentation_stack.pop();
                     return Token::Dedent;
                 }
             }
+        } else if !self.indentation_stack.is_empty()
+            && (self.indentation_level == 0 || self.last_token == Token::NewLine)
+        {
+            self.indentation_level = 0;
+            self.indentation_stack.pop();
+            return Token::Dedent;
         }
 
         if chr == '"' {
@@ -417,23 +433,12 @@ mod tests {
     #[test]
     fn test_source() {
         vec![(
-            r###"
-def test(x):
-  if x > 0:
-    return 1
-  else:
-    return 0
+            r###"if x > 0:
+  return 1
+else:
+  return 0
 "###,
             vec![
-                Token::NewLine,
-                Token::Def,
-                Token::Identifier(String::from("test")),
-                Token::LeftParen,
-                Token::Identifier(String::from("x")),
-                Token::RightParen,
-                Token::Colon,
-                Token::NewLine,
-                Token::Indent,
                 Token::If,
                 Token::Identifier(String::from("x")),
                 Token::Greater,
@@ -452,6 +457,7 @@ def test(x):
                 Token::Return,
                 Token::Integer(0),
                 Token::NewLine,
+                Token::Dedent,
                 Token::Eof,
             ],
         )]

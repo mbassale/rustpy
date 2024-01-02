@@ -1,5 +1,5 @@
 use crate::ast::Literal;
-use crate::bytecode::Bytecode;
+use crate::bytecode::{Bytecode, SIZE_INDEX};
 
 #[derive(Clone, Debug)]
 pub struct Chunk {
@@ -14,6 +14,22 @@ impl Chunk {
             name: String::from("__main__"),
             data: Vec::new(),
             constants: Vec::new(),
+        }
+    }
+
+    pub fn size(&self) -> u64 {
+        self.data.len() as u64
+    }
+
+    pub fn get_data_u64_safe(&self, index: usize) -> Option<u64> {
+        match self.data.get(index..index + 8) {
+            Some(bytes) => {
+                if let Ok(array) = bytes.try_into() {
+                    return Some(u64::from_ne_bytes(array));
+                }
+                return None;
+            }
+            None => None,
         }
     }
 
@@ -35,7 +51,17 @@ impl Chunk {
         self.data.push(op as u8);
     }
 
-    pub fn emit_index(&mut self, index: u64) {
+    pub fn emit_index(&mut self, index: u64) -> u64 {
+        let index_addr = self.size();
         self.data.extend_from_slice(&index.to_ne_bytes());
+        index_addr
+    }
+
+    pub fn patch_jump_addr(&mut self, jump_offset_addr: u64, target_addr: u64) {
+        let offset = target_addr - jump_offset_addr + 1;
+        let index_bytes = offset.to_ne_bytes();
+        for i in 0..index_bytes.len() {
+            self.data[jump_offset_addr as usize + i] = index_bytes[i];
+        }
     }
 }
