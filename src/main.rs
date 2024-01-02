@@ -33,8 +33,12 @@ fn repl() -> Result<(), Error> {
         }
 
         match interpreter.run(&source) {
-            Ok(_) => (),
-            Err(err) => eprintln!("{:?}", err),
+            Ok(value) => {
+                dbg!(value);
+            }
+            Err(err) => {
+                eprintln!("{:?}", err);
+            }
         };
     }
     Ok(())

@@ -4,7 +4,7 @@ mod chunk;
 mod compiler;
 mod disassembler;
 mod lexer;
-mod object;
+pub mod object;
 mod parser;
 mod symbol_table;
 mod token;
@@ -15,6 +15,7 @@ use symbol_table::SymbolTable;
 use crate::compiler::{Compiler, CompilerError};
 use crate::disassembler::Disassembler;
 use crate::lexer::Lexer;
+use crate::object::Value;
 use crate::parser::{Parser, ParserError};
 use crate::token::Token;
 use crate::vm::{Vm, VmError};
@@ -42,7 +43,7 @@ impl Interpreter {
         }
     }
 
-    pub fn run(&mut self, source: &str) -> Result<String, InterpreterError> {
+    pub fn run(&mut self, source: &str) -> Result<Value, InterpreterError> {
         self.source = String::from(source);
 
         let tokens: Vec<Token> = Lexer::new(&self.source).into_iter().collect();
@@ -71,9 +72,8 @@ impl Interpreter {
             Ok(result) => result,
             Err(vm_error) => return Err(InterpreterError::VmError(vm_error)),
         };
-        let result = dbg!(result);
 
-        Ok(format!("{:?}", result.value))
+        Ok(result.value)
     }
 
     fn check_lexer_errors(&self, tokens: &Vec<Token>) -> Result<(), InterpreterError> {
