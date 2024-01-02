@@ -636,7 +636,10 @@ mod tests {
             vec![Box::new(Expression::While(WhileExpression {
                 condition: Box::new(Expression::Literal(Literal::True)),
                 body: Box::new(Expression::Block(BlockExpression {
-                    exprs: vec![Box::new(Expression::Literal(Literal::True)), Box::new(Expression::Literal(Literal::True))],
+                    exprs: vec![
+                        Box::new(Expression::Literal(Literal::True)),
+                        Box::new(Expression::Literal(Literal::True)),
+                    ],
                 })),
             }))],
         )]

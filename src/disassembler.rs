@@ -81,7 +81,7 @@ impl Disassembler {
                     ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
 
-                Bytecode::Jump | Bytecode::JumpIfFalse => {
+                Bytecode::Jump | Bytecode::JumpIfFalse | Bytecode::Loop => {
                     result.push(Instruction {
                         ip,
                         op,

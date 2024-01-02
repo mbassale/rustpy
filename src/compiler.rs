@@ -1,6 +1,6 @@
 use crate::ast::{
     AssignmentExpression, BinaryExpression, BlockExpression, Expression, IfExpression, Literal,
-    Operator, Program, UnaryExpression,
+    Operator, Program, UnaryExpression, WhileExpression,
 };
 use crate::bytecode::Bytecode;
 use crate::chunk::Chunk;
@@ -43,6 +43,9 @@ impl Compiler<'_> {
                 self.emit_block_expression(chunk, &block_expression)
             }
             Expression::If(if_expression) => self.emit_if_expression(chunk, &if_expression),
+            Expression::While(while_expression) => {
+                self.emit_while_expression(chunk, &while_expression)
+            }
             Expression::Assignment(assignment) => self.emit_assignment_op(chunk, &assignment),
             Expression::Unary(unary) => self.emit_unary_op(chunk, &unary),
             Expression::Binary(binary) => self.emit_binary_op(chunk, &binary),
@@ -104,6 +107,25 @@ impl Compiler<'_> {
         let exit_offset_addr = chunk.emit_index(0);
         chunk.patch_jump_addr(jump_offset_addr, chunk.size());
         exit_offset_addr
+    }
+
+    fn emit_while_expression(&mut self, chunk: &mut Chunk, while_expr: &WhileExpression) {
+        // emit conditional
+        let start_addr = chunk.size();
+        self.emit_expression(chunk, while_expr.condition.as_ref());
+        chunk.emit(Bytecode::JumpIfFalse);
+        let jump_offset_addr = chunk.emit_index(0);
+
+        // emit body
+        self.emit_expression(chunk, while_expr.body.as_ref());
+
+        // loop to the beginning
+        chunk.emit(Bytecode::Loop);
+        chunk.emit_index(start_addr);
+
+        // exit address
+        let exit_addr = chunk.size();
+        chunk.patch_jump_addr(jump_offset_addr, exit_addr);
     }
 
     fn emit_assignment_op(&mut self, chunk: &mut Chunk, assignment_expr: &AssignmentExpression) {

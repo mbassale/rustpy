@@ -28,6 +28,7 @@ pub enum Bytecode {
     // Control Flow
     Jump = 0x40,
     JumpIfFalse = 0x41,
+    Loop = 0x42,
 
     // Binary Ops
     And = 0x50,

@@ -128,6 +128,12 @@ impl Vm {
                     }
                 }
 
+                Bytecode::Loop => {
+                    let addr = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                    println!("{:?} IP: {:X}, Addr: {:X}", op, self.ip, addr,);
+                    self.ip = addr as usize;
+                }
+
                 // Unary Ops
                 Bytecode::Not => {
                     let rhs = self.stack.pop().unwrap();
