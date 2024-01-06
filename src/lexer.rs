@@ -432,35 +432,63 @@ mod tests {
 
     #[test]
     fn test_source() {
-        vec![(
-            r###"if x > 0:
+        vec![
+            (
+                r###"if x > 0:
   return 1
 else:
   return 0
 "###,
-            vec![
-                Token::If,
-                Token::Identifier(String::from("x")),
-                Token::Greater,
-                Token::Integer(0),
-                Token::Colon,
-                Token::NewLine,
-                Token::Indent,
-                Token::Return,
-                Token::Integer(1),
-                Token::NewLine,
-                Token::Dedent,
-                Token::Else,
-                Token::Colon,
-                Token::NewLine,
-                Token::Indent,
-                Token::Return,
-                Token::Integer(0),
-                Token::NewLine,
-                Token::Dedent,
-                Token::Eof,
-            ],
-        )]
+                vec![
+                    Token::If,
+                    Token::Identifier(String::from("x")),
+                    Token::Greater,
+                    Token::Integer(0),
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Return,
+                    Token::Integer(1),
+                    Token::NewLine,
+                    Token::Dedent,
+                    Token::Else,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Return,
+                    Token::Integer(0),
+                    Token::NewLine,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+            ),
+            (
+                r###"
+def test(arg1, arg2, arg3):
+  return True
+"###,
+                vec![
+                    Token::NewLine,
+                    Token::Def,
+                    Token::Identifier(String::from("test")),
+                    Token::LeftParen,
+                    Token::Identifier(String::from("arg1")),
+                    Token::Comma,
+                    Token::Identifier(String::from("arg2")),
+                    Token::Comma,
+                    Token::Identifier(String::from("arg3")),
+                    Token::RightParen,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Return,
+                    Token::True,
+                    Token::NewLine,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+            ),
+        ]
         .into_iter()
         .for_each(|(source, expected)| {
             let actual: Vec<Token> = Lexer::new(source).into_iter().collect();
