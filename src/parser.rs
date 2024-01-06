@@ -1,6 +1,7 @@
 use crate::ast::{
     AssignmentExpression, BinaryExpression, BlockExpression, ElifExpression, Expression,
-    FunctionExpression, IfExpression, Literal, Operator, Program, UnaryExpression, WhileExpression,
+    FunctionExpression, IfExpression, Literal, Operator, Program, ReturnExpression,
+    UnaryExpression, WhileExpression,
 };
 use crate::token::Token;
 
@@ -50,6 +51,8 @@ impl Parser {
             self.parse_if_expression()
         } else if self.match_token(&Token::While) {
             self.parse_while_expression()
+        } else if self.match_token(&Token::Return) {
+            self.parse_return_expression()
         } else {
             self.parse_assignment()
         }
@@ -208,6 +211,14 @@ impl Parser {
             condition,
             body,
         })))
+    }
+
+    fn parse_return_expression(&mut self) -> Result<Box<Expression>, ParserError> {
+        let expr = match self.current_token() {
+            &Token::Dedent | &Token::Eof => Box::new(Expression::Empty),
+            _ => self.parse_assignment()?,
+        };
+        Ok(Box::new(Expression::Return(ReturnExpression { expr })))
     }
 
     fn parse_assignment(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -714,30 +725,61 @@ mod tests {
 
     #[test]
     fn test_function_expression() {
-        vec![(
-            vec![
-                Token::Def,
-                Token::Identifier(String::from("test")),
-                Token::LeftParen,
-                Token::Identifier(String::from("arg1")),
-                Token::Comma,
-                Token::Identifier(String::from("arg2")),
-                Token::RightParen,
-                Token::Colon,
-                Token::NewLine,
-                Token::Indent,
-                Token::True,
-                Token::Dedent,
-                Token::Eof,
-            ],
-            vec![Box::new(Expression::Function(FunctionExpression {
-                name: String::from("test"),
-                args: vec![String::from("arg1"), String::from("arg2")],
-                body: BlockExpression {
-                    exprs: vec![Box::new(Expression::Literal(Literal::True))],
-                },
-            }))],
-        )]
+        vec![
+            (
+                vec![
+                    Token::Def,
+                    Token::Identifier(String::from("test")),
+                    Token::LeftParen,
+                    Token::Identifier(String::from("arg1")),
+                    Token::Comma,
+                    Token::Identifier(String::from("arg2")),
+                    Token::RightParen,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Return,
+                    Token::True,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::Function(FunctionExpression {
+                    name: String::from("test"),
+                    args: vec![String::from("arg1"), String::from("arg2")],
+                    body: BlockExpression {
+                        exprs: vec![Box::new(Expression::Return(ReturnExpression {
+                            expr: Box::new(Expression::Literal(Literal::True)),
+                        }))],
+                    },
+                }))],
+            ),
+            (
+                vec![
+                    Token::Def,
+                    Token::Identifier(String::from("test")),
+                    Token::LeftParen,
+                    Token::Identifier(String::from("arg1")),
+                    Token::Comma,
+                    Token::Identifier(String::from("arg2")),
+                    Token::RightParen,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Return,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::Function(FunctionExpression {
+                    name: String::from("test"),
+                    args: vec![String::from("arg1"), String::from("arg2")],
+                    body: BlockExpression {
+                        exprs: vec![Box::new(Expression::Return(ReturnExpression {
+                            expr: Box::new(Expression::Empty),
+                        }))],
+                    },
+                }))],
+            ),
+        ]
         .into_iter()
         .for_each(|(tokens, exprs)| {
             let mut parser = Parser::new(tokens);
