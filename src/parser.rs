@@ -1,6 +1,6 @@
 use crate::ast::{
     AssignmentExpression, BinaryExpression, BlockExpression, ElifExpression, Expression,
-    IfExpression, Literal, Operator, Program, UnaryExpression, WhileExpression,
+    FunctionExpression, IfExpression, Literal, Operator, Program, UnaryExpression, WhileExpression,
 };
 use crate::token::Token;
 
@@ -44,6 +44,8 @@ impl Parser {
     fn parse_expression(&mut self) -> Result<Box<Expression>, ParserError> {
         if self.match_token(&Token::Indent) {
             self.parse_block_expression()
+        } else if self.match_token(&Token::Def) {
+            self.parse_function_expression()
         } else if self.match_token(&Token::If) {
             self.parse_if_expression()
         } else if self.match_token(&Token::While) {
@@ -64,6 +66,62 @@ impl Parser {
         }
         self.match_token(&Token::Dedent);
         Ok(Box::new(Expression::Block(BlockExpression { exprs })))
+    }
+
+    fn parse_function_expression(&mut self) -> Result<Box<Expression>, ParserError> {
+        let function_name = match self.current_token() {
+            Token::Identifier(function_name) => function_name.to_string(),
+            _ => {
+                return Err(ParserError::InvalidExpression(String::from(
+                    "Missing function name",
+                )))
+            }
+        };
+        self.advance_token();
+
+        if !self.match_token(&Token::LeftParen) {
+            return Err(ParserError::InvalidExpression(String::from("Missing '('")));
+        }
+
+        let mut args: Vec<String> = Vec::new();
+        loop {
+            let arg_name = match self.current_token() {
+                Token::Identifier(arg_name) => arg_name.to_string(),
+                _ => break,
+            };
+            args.push(arg_name);
+            self.advance_token();
+
+            if self.match_token(&Token::Comma) || self.match_token(&Token::RightParen) {
+                if self.previous_token() == &Token::RightParen {
+                    break;
+                }
+            } else {
+                return Err(ParserError::InvalidExpression(String::from(
+                    "Expected argument or ')'",
+                )));
+            }
+        }
+
+        if !self.match_token(&Token::Colon) {
+            return Err(ParserError::InvalidExpression(String::from("Missing ':'")));
+        }
+
+        let body_expr = self.parse_expression()?;
+        let block_expression = match *body_expr {
+            Expression::Block(block_expression) => block_expression,
+            _ => {
+                return Err(ParserError::InvalidExpression(String::from(
+                    "Bad function definition, expected block",
+                )))
+            }
+        };
+
+        Ok(Box::new(Expression::Function(FunctionExpression {
+            name: function_name,
+            args,
+            body: block_expression,
+        })))
     }
 
     fn parse_if_expression(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -641,6 +699,43 @@ mod tests {
                         Box::new(Expression::Literal(Literal::True)),
                     ],
                 })),
+            }))],
+        )]
+        .into_iter()
+        .for_each(|(tokens, exprs)| {
+            let mut parser = Parser::new(tokens);
+            let program = match parser.parse() {
+                Ok(program) => program,
+                Err(err) => panic!("ParseError: {:?}", err),
+            };
+            assert_eq!(program.stmts, exprs);
+        });
+    }
+
+    #[test]
+    fn test_function_expression() {
+        vec![(
+            vec![
+                Token::Def,
+                Token::Identifier(String::from("test")),
+                Token::LeftParen,
+                Token::Identifier(String::from("arg1")),
+                Token::Comma,
+                Token::Identifier(String::from("arg2")),
+                Token::RightParen,
+                Token::Colon,
+                Token::NewLine,
+                Token::Indent,
+                Token::True,
+                Token::Dedent,
+                Token::Eof,
+            ],
+            vec![Box::new(Expression::Function(FunctionExpression {
+                name: String::from("test"),
+                args: vec![String::from("arg1"), String::from("arg2")],
+                body: BlockExpression {
+                    exprs: vec![Box::new(Expression::Literal(Literal::True))],
+                },
             }))],
         )]
         .into_iter()

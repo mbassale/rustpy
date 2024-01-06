@@ -60,8 +60,8 @@ pub struct BlockExpression {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FunctionExpression {
     pub name: String,
-    pub args: String,
-    pub exprs: Vec<Box<Expression>>,
+    pub args: Vec<String>,
+    pub body: BlockExpression,
 }
 
 #[derive(Clone, Debug, PartialEq)]
