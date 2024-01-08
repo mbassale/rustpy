@@ -1,4 +1,5 @@
 use crate::ast::Literal;
+use crate::function::Function;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -17,6 +18,7 @@ pub enum Value {
     Integer(i64),
     Float(f64),
     String(String),
+    Function(Function),
 }
 
 impl Value {
@@ -36,6 +38,7 @@ impl Value {
             Value::Integer(value) => *value != 0,
             Value::Float(value) => *value != 0.0,
             Value::String(value) => !value.is_empty(),
+            Value::Function(_) => true,
         }
     }
 
@@ -47,6 +50,35 @@ impl Value {
             Value::Integer(value) => *value == 0,
             Value::Float(value) => *value == 0.0,
             Value::String(value) => value.is_empty(),
+            Value::Function(_) => false,
+        }
+    }
+
+    pub fn is_integer(&self) -> bool {
+        match self {
+            Value::Integer(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_float(&self) -> bool {
+        match self {
+            Value::Float(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_string(&self) -> bool {
+        match self {
+            Value::String(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_callable(&self) -> bool {
+        match self {
+            Value::Function(_) => true,
+            _ => false,
         }
     }
 }
@@ -62,6 +94,7 @@ impl Hash for Value {
             }
             Self::Integer(value) => value.hash(state),
             Self::String(value) => value.hash(state),
+            Self::Function(function) => function.name.hash(state),
         }
     }
 }
@@ -138,23 +171,18 @@ impl Object {
     }
 
     pub fn is_integer(&self) -> bool {
-        match self.value {
-            Value::Integer(_) => true,
-            _ => false,
-        }
+        self.value.is_integer()
     }
 
     pub fn is_float(&self) -> bool {
-        match self.value {
-            Value::Float(_) => true,
-            _ => false,
-        }
+        self.value.is_float()
     }
 
     pub fn is_string(&self) -> bool {
-        match self.value {
-            Value::String(_) => true,
-            _ => false,
-        }
+        self.value.is_string()
+    }
+
+    pub fn is_callable(&self) -> bool {
+        self.value.is_callable()
     }
 }

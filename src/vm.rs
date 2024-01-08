@@ -1,5 +1,5 @@
 use crate::bytecode::{Bytecode, SIZE_INDEX, SIZE_INSTRUCTION};
-use crate::chunk::Chunk;
+use crate::function::Function;
 use crate::object::{Object, Value};
 use crate::symbol_table::SymbolTable;
 
@@ -12,7 +12,7 @@ pub enum VmError {
 
 pub struct Vm {
     stack: Vec<Object>,
-    chunk: Chunk,
+    function: Function,
     ip: usize,
 }
 
@@ -20,7 +20,7 @@ impl Vm {
     pub fn new() -> Vm {
         Vm {
             stack: Vec::new(),
-            chunk: Chunk::new(),
+            function: Function::new(String::from("")),
             ip: 0,
         }
     }
@@ -28,12 +28,13 @@ impl Vm {
     pub fn interpret(
         &mut self,
         globals: &mut SymbolTable,
-        chunk: Chunk,
+        function: Function,
     ) -> Result<Object, VmError> {
         dbg!(&globals);
-        self.load_chunk(chunk)?;
-        while self.ip < self.chunk.data.len() {
-            let op = self.chunk.data[self.ip];
+        self.load_function(function)?;
+        let chunk = &self.function.chunk;
+        while self.ip < chunk.data.len() {
+            let op = chunk.data[self.ip];
             let op = match Bytecode::try_from(op) {
                 Ok(op) => op,
                 Err(_) => {
@@ -65,8 +66,8 @@ impl Vm {
                     self.ip += SIZE_INSTRUCTION;
                 }
                 Bytecode::Const => {
-                    let index = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
-                    let constant = &self.chunk.constants[index as usize];
+                    let index = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                    let constant = &chunk.constants[index as usize];
                     let object = Object::from_literal(&constant);
                     self.stack.push(object);
                     self.ip += SIZE_INSTRUCTION + SIZE_INDEX;
@@ -74,7 +75,7 @@ impl Vm {
 
                 // Globals Manipulation
                 Bytecode::GetGlobal => {
-                    let index = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                    let index = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
                     let object = match globals.get(index) {
                         Some(obj) => obj,
                         None => {
@@ -99,7 +100,7 @@ impl Vm {
 
                 // Control Flow
                 Bytecode::Jump => {
-                    let addr_offset = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                    let addr_offset = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
                     println!(
                         "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
                         op,
@@ -114,7 +115,7 @@ impl Vm {
                     // we remove the conditional value from the stack
                     let conditional_value = self.stack.pop().unwrap();
                     if conditional_value.is_falsey() {
-                        let addr_offset = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                        let addr_offset = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
                         println!(
                             "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
                             op,
@@ -129,7 +130,7 @@ impl Vm {
                 }
 
                 Bytecode::Loop => {
-                    let addr = self.chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                    let addr = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
                     println!("{:?} IP: {:X}, Addr: {:X}", op, self.ip, addr,);
                     self.ip = addr as usize;
                 }
@@ -192,8 +193,8 @@ impl Vm {
         Ok(result)
     }
 
-    fn load_chunk(&mut self, chunk: Chunk) -> Result<(), VmError> {
-        self.chunk = chunk;
+    fn load_function(&mut self, function: Function) -> Result<(), VmError> {
+        self.function = function;
         self.ip = 0;
         self.stack.clear();
         Ok(())

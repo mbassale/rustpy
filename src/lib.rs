@@ -3,6 +3,7 @@ mod bytecode;
 mod chunk;
 mod compiler;
 mod disassembler;
+mod function;
 mod lexer;
 pub mod object;
 mod parser;
@@ -58,17 +59,17 @@ impl Interpreter {
         let program = dbg!(program);
 
         let mut compiler = Compiler::new(program, &mut self.globals);
-        let chunk = match compiler.compile() {
-            Ok(chunk) => chunk,
+        let function = match compiler.compile() {
+            Ok(function) => function,
             Err(compiler_error) => return Err(InterpreterError::CompilerError(compiler_error)),
         };
-        let chunk = dbg!(chunk);
+        let function = dbg!(function);
 
-        let disassembler = Disassembler::new(chunk.clone());
+        let disassembler = Disassembler::new(function.chunk.clone());
         let instructions = disassembler.disassemble();
         dbg!(instructions);
 
-        let result = match self.vm.interpret(&mut self.globals, chunk) {
+        let result = match self.vm.interpret(&mut self.globals, function) {
             Ok(result) => result,
             Err(vm_error) => return Err(InterpreterError::VmError(vm_error)),
         };

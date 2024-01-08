@@ -16,7 +16,7 @@ pub enum Operator {
     GreaterEqual,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Literal {
     None,
     True,
