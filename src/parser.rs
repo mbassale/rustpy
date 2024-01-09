@@ -1,6 +1,6 @@
 use crate::ast::{
-    AssignmentExpression, BinaryExpression, BlockExpression, ElifExpression, Expression,
-    FunctionExpression, IfExpression, Literal, Operator, Program, ReturnExpression,
+    AssignmentExpression, BinaryExpression, BlockExpression, CallExpression, ElifExpression,
+    Expression, FunctionExpression, IfExpression, Literal, Operator, Program, ReturnExpression,
     UnaryExpression, WhileExpression,
 };
 use crate::token::Token;
@@ -323,6 +323,20 @@ impl Parser {
 
     fn parse_call(&mut self) -> Result<Box<Expression>, ParserError> {
         let expr = self.parse_primary()?;
+
+        let mut args: Vec<Box<Expression>> = Vec::new();
+        if self.match_token(&Token::LeftParen) {
+            while !self.match_token(&Token::RightParen) {
+                let argument = self.parse_expression()?;
+                args.push(argument);
+                self.match_token(&Token::Comma);
+            }
+            return Ok(Box::new(Expression::Call(crate::ast::CallExpression {
+                callable: expr,
+                args,
+            })));
+        }
+
         Ok(expr)
     }
 
@@ -724,7 +738,7 @@ mod tests {
     }
 
     #[test]
-    fn test_function_expression() {
+    fn test_function_and_call_expressions() {
         vec![
             (
                 vec![
@@ -778,6 +792,55 @@ mod tests {
                         }))],
                     },
                 }))],
+            ),
+            (
+                vec![
+                    Token::Def,
+                    Token::Identifier(String::from("test")),
+                    Token::LeftParen,
+                    Token::Identifier(String::from("arg1")),
+                    Token::Comma,
+                    Token::Identifier(String::from("arg2")),
+                    Token::RightParen,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Return,
+                    Token::Identifier(String::from("arg1")),
+                    Token::Plus,
+                    Token::Identifier(String::from("arg2")),
+                    Token::Dedent,
+                    Token::NewLine,
+                    Token::Identifier(String::from("test")),
+                    Token::LeftParen,
+                    Token::Integer(1),
+                    Token::Comma,
+                    Token::Integer(2),
+                    Token::RightParen,
+                    Token::Eof,
+                ],
+                vec![
+                    Box::new(Expression::Function(FunctionExpression {
+                        name: String::from("test"),
+                        args: vec![String::from("arg1"), String::from("arg2")],
+                        body: BlockExpression {
+                            exprs: vec![Box::new(Expression::Return(ReturnExpression {
+                                expr: Box::new(Expression::Binary(BinaryExpression {
+                                    lhs: Box::new(Expression::Variable(String::from("arg1"))),
+                                    op: Operator::Add,
+                                    rhs: Box::new(Expression::Variable(String::from("arg2"))),
+                                })),
+                            }))],
+                        },
+                    })),
+                    Box::new(Expression::Call(CallExpression {
+                        callable: Box::new(Expression::Variable(String::from("test"))),
+                        args: vec![
+                            Box::new(Expression::Literal(Literal::Integer(1))),
+                            Box::new(Expression::Literal(Literal::Integer(2))),
+                        ],
+                    })),
+                ],
             ),
         ]
         .into_iter()
