@@ -1,6 +1,6 @@
 use crate::ast::{
-    AssignmentExpression, BinaryExpression, BlockExpression, Expression, FunctionExpression,
-    IfExpression, Literal, Operator, Program, UnaryExpression, WhileExpression,
+    AssignmentExpression, BinaryExpression, BlockExpression, CallExpression, Expression,
+    FunctionExpression, IfExpression, Literal, Operator, Program, UnaryExpression, WhileExpression,
 };
 use crate::bytecode::Bytecode;
 use crate::chunk::Chunk;
@@ -49,6 +49,9 @@ impl Compiler<'_> {
                     .functions
                     .insert(function_expression.name.to_string(), child_function);
             }
+            Expression::Call(call_expression) => {
+                self.emit_call_expression(function, &call_expression)
+            }
             Expression::Block(block_expression) => {
                 self.emit_block_expression(function, &block_expression)
             }
@@ -72,6 +75,14 @@ impl Compiler<'_> {
         function_expression: &FunctionExpression,
     ) {
         self.emit_block_expression(function, &function_expression.body);
+    }
+
+    fn emit_call_expression(&mut self, function: &mut Function, call_expression: &CallExpression) {
+        call_expression.args.iter().for_each(|expr| {
+            self.emit_expression(function, expr);
+        });
+        self.emit_expression(function, call_expression.callable.as_ref());
+        function.chunk.emit(Bytecode::Call);
     }
 
     fn emit_block_expression(&mut self, function: &mut Function, block_expr: &BlockExpression) {

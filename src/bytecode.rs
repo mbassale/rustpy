@@ -25,6 +25,9 @@ pub enum Bytecode {
     SetGlobal = 0x20,
     GetGlobal = 0x21,
 
+    // Functions and Objects
+    Call = 0x30,
+
     // Control Flow
     Jump = 0x40,
     JumpIfFalse = 0x41,
