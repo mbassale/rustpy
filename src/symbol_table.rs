@@ -26,7 +26,8 @@ impl SymbolTable {
     pub fn insert(&mut self, name: &str, obj: Option<Object>) -> u64 {
         self.last_idx += 1;
         match obj {
-            Some(obj) => {
+            Some(mut obj) => {
+                obj.id = self.last_idx;
                 self.data.insert(self.last_idx, obj);
             }
             None => {

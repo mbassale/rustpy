@@ -98,6 +98,32 @@ impl Vm {
                     self.ip += SIZE_INSTRUCTION;
                 }
 
+                Bytecode::Call => {
+                    let callable = self.stack.pop().unwrap();
+                    let index = globals.get_index(&callable.name);
+                    let function_obj = match globals.get(index) {
+                        Some(obj) => obj,
+                        None => {
+                            return Err(VmError::UndefinedName(format!(
+                                "NameError: name '{}' not defined",
+                                index
+                            )))
+                        }
+                    };
+                    match &function_obj.value {
+                        Value::Function(_function) => {
+                            // TODO: Implement frames, locals and emit function chunks in the
+                            // parent chunk to improve cache locality.
+                        }
+                        _ => {
+                            return Err(VmError::InvalidOperand(format!(
+                                "Invalid callable: '{}'",
+                                &callable.name
+                            )));
+                        }
+                    }
+                }
+
                 // Control Flow
                 Bytecode::Jump => {
                     let addr_offset = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);

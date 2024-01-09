@@ -1,12 +1,10 @@
 use crate::chunk::Chunk;
-use std::collections::HashMap;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Function {
     pub name: String,
     pub arity: usize,
     pub chunk: Chunk,
-    pub functions: HashMap<String, Box<Function>>,
 }
 
 impl PartialOrd for Function {
@@ -21,7 +19,6 @@ impl Function {
             name,
             arity: 0,
             chunk: Chunk::new(),
-            functions: HashMap::new(),
         }
     }
 }

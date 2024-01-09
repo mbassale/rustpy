@@ -5,6 +5,7 @@ use crate::ast::{
 use crate::bytecode::Bytecode;
 use crate::chunk::Chunk;
 use crate::function::Function;
+use crate::object::{Object, Value};
 use crate::symbol_table::SymbolTable;
 
 #[derive(Clone, Debug)]
@@ -42,12 +43,11 @@ impl Compiler<'_> {
         let chunk = &mut function.chunk;
         match expr {
             Expression::Function(function_expression) => {
-                let mut child_function =
-                    Box::new(Function::new(function_expression.name.to_string()));
+                let name = function_expression.name.to_string();
+                let mut child_function = Function::new(name.to_string());
                 self.emit_function_expression(&mut child_function, &function_expression);
-                function
-                    .functions
-                    .insert(function_expression.name.to_string(), child_function);
+                let function_object = Object::new(Value::Function(child_function));
+                self.globals.insert(&name, Some(function_object));
             }
             Expression::Call(call_expression) => {
                 self.emit_call_expression(function, &call_expression)
@@ -62,7 +62,7 @@ impl Compiler<'_> {
             Expression::Assignment(assignment) => self.emit_assignment_op(function, &assignment),
             Expression::Unary(unary) => self.emit_unary_op(function, &unary),
             Expression::Binary(binary) => self.emit_binary_op(function, &binary),
-            Expression::Variable(value) => self.emit_variable_op(chunk, &value),
+            Expression::Variable(value) => self.emit_variable_op(function, &value),
             Expression::Literal(identifier) => self.emit_literal(chunk, &identifier),
             Expression::Empty => chunk.emit(Bytecode::Nop),
             _ => (),
@@ -181,15 +181,15 @@ impl Compiler<'_> {
         self.emit_op(&mut function.chunk, &binary_expr.op);
     }
 
-    fn emit_variable_op(&mut self, chunk: &mut Chunk, identifier: &str) {
+    fn emit_variable_op(&mut self, function: &mut Function, identifier: &String) {
         let index: u64;
         if self.globals.contains_name(identifier) {
             index = self.globals.get_index(identifier);
         } else {
             index = self.globals.insert(identifier, None);
         }
-        chunk.emit(Bytecode::GetGlobal);
-        chunk.emit_index(index);
+        function.chunk.emit(Bytecode::GetGlobal);
+        function.chunk.emit_index(index);
     }
 
     fn emit_op(&self, chunk: &mut Chunk, op: &Operator) {
