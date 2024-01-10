@@ -21,3 +21,35 @@ True
         assert_eq!(value, expected);
     });
 }
+
+#[test]
+fn function_call() {
+    vec![
+        (
+            r###"
+def test():
+  True
+
+test()
+"###,
+            Value::True,
+        ),
+        (
+            r###"
+def test():
+  1 + 1
+
+test()
+"###,
+            Value::Integer(2),
+        ),
+    ]
+    .into_iter()
+    .for_each(|(source, expected)| {
+        let mut interpreter = Interpreter::new();
+        let result = interpreter.run(source);
+        assert!(result.is_ok());
+        let value = result.unwrap();
+        assert_eq!(value, expected);
+    });
+}

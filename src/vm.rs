@@ -1,4 +1,5 @@
 use crate::bytecode::{Bytecode, SIZE_INDEX, SIZE_INSTRUCTION};
+use crate::chunk::Chunk;
 use crate::function::Function;
 use crate::object::{Object, Value};
 use crate::symbol_table::SymbolTable;
@@ -10,19 +11,61 @@ pub enum VmError {
     UndefinedName(String),
 }
 
-pub struct Vm {
-    stack: Vec<Object>,
+pub struct Frame {
     function: Function,
     ip: usize,
+}
+
+impl Frame {
+    fn get_chunk(&self) -> &Chunk {
+        &self.function.chunk
+    }
+
+    fn get_opcode(&self) -> Result<Bytecode, VmError> {
+        let op = self.function.chunk.data[self.ip];
+        let op = match Bytecode::try_from(op) {
+            Ok(op) => op,
+            Err(_) => {
+                return Err(VmError::InvalidBytecode(format!(
+                    "Invalid bytecode: {}",
+                    op
+                )))
+            }
+        };
+        Ok(op)
+    }
+
+    fn set_ip(&mut self, addr: usize) {
+        self.ip = addr;
+    }
+
+    fn incr_ip(&mut self, offset: usize) {
+        self.ip += offset;
+    }
+}
+
+pub struct Vm {
+    stack: Vec<Object>,
+    frames: Vec<Frame>,
 }
 
 impl Vm {
     pub fn new() -> Vm {
         Vm {
             stack: Vec::new(),
-            function: Function::new(String::from("")),
-            ip: 0,
+            frames: Vec::new(),
         }
+    }
+
+    fn current_frame(&mut self) -> &mut Frame {
+        match self.frames.last_mut() {
+            Some(frame) => frame,
+            _ => unreachable!(),
+        }
+    }
+
+    fn dump_stack(&self) {
+        dbg!(&self.stack);
     }
 
     pub fn interpret(
@@ -32,50 +75,42 @@ impl Vm {
     ) -> Result<Object, VmError> {
         dbg!(&globals);
         self.load_function(function)?;
-        let chunk = &self.function.chunk;
-        while self.ip < chunk.data.len() {
-            let op = chunk.data[self.ip];
-            let op = match Bytecode::try_from(op) {
-                Ok(op) => op,
-                Err(_) => {
-                    return Err(VmError::InvalidBytecode(format!(
-                        "Invalid bytecode: {}",
-                        op
-                    )))
-                }
-            };
-            println!("IP: {:X} OpCode: {:?}", self.ip, op);
-            dbg!(&self.stack);
+        while self.current_frame().ip < self.current_frame().get_chunk().data.len() {
+            let op = self.current_frame().get_opcode()?;
+            println!("IP: {:X} OpCode: {:?}", self.current_frame().ip, op);
+            self.dump_stack();
 
             match op {
                 Bytecode::Nop => {
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
                 }
 
                 // Literals
                 Bytecode::None => {
                     self.stack.push(Object::new_none());
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
                 }
                 Bytecode::True => {
                     self.stack.push(Object::new_true());
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
                 }
                 Bytecode::False => {
                     self.stack.push(Object::new_false());
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
                 }
                 Bytecode::Const => {
-                    let index = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
-                    let constant = &chunk.constants[index as usize];
+                    let offset_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                    let index = self.current_frame().get_chunk().get_data_u64(offset_addr);
+                    let constant = &self.current_frame().get_chunk().constants[index as usize];
                     let object = Object::from_literal(&constant);
                     self.stack.push(object);
-                    self.ip += SIZE_INSTRUCTION + SIZE_INDEX;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
                 }
 
                 // Globals Manipulation
                 Bytecode::GetGlobal => {
-                    let index = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                    let index_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                    let index = self.current_frame().get_chunk().get_data_u64(index_addr);
                     let object = match globals.get(index) {
                         Some(obj) => obj,
                         None => {
@@ -86,7 +121,7 @@ impl Vm {
                         }
                     };
                     self.stack.push(object.clone());
-                    self.ip += SIZE_INSTRUCTION + SIZE_INDEX;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
                 }
                 Bytecode::SetGlobal => {
                     let rhs = self.stack.pop().unwrap();
@@ -95,7 +130,7 @@ impl Vm {
                     lhs.value = rhs.value.clone();
                     globals.set(index, lhs.clone());
                     self.stack.push(lhs);
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().ip += SIZE_INSTRUCTION;
                 }
 
                 Bytecode::Call => {
@@ -111,9 +146,13 @@ impl Vm {
                         }
                     };
                     match &function_obj.value {
-                        Value::Function(_function) => {
-                            // TODO: Implement frames, locals and emit function chunks in the
-                            // parent chunk to improve cache locality.
+                        Value::Function(function) => {
+                            self.current_frame().incr_ip(SIZE_INSTRUCTION);
+                            let frame = Frame {
+                                function: function.clone(),
+                                ip: 0,
+                            };
+                            self.frames.push(frame);
                         }
                         _ => {
                             return Err(VmError::InvalidOperand(format!(
@@ -126,39 +165,48 @@ impl Vm {
 
                 // Control Flow
                 Bytecode::Jump => {
-                    let addr_offset = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                    let offset_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                    let addr_offset = self.current_frame().get_chunk().get_data_u64(offset_addr);
                     println!(
                         "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
                         op,
-                        self.ip,
+                        self.current_frame().ip,
                         addr_offset,
-                        self.ip + addr_offset as usize
+                        offset_addr
                     );
-                    self.ip += addr_offset as usize;
+                    self.current_frame().incr_ip(addr_offset as usize);
                 }
 
                 Bytecode::JumpIfFalse => {
                     // we remove the conditional value from the stack
                     let conditional_value = self.stack.pop().unwrap();
                     if conditional_value.is_falsey() {
-                        let addr_offset = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
+                        let offset_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                        let addr_offset =
+                            self.current_frame().get_chunk().get_data_u64(offset_addr);
                         println!(
                             "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
                             op,
-                            self.ip,
+                            self.current_frame().ip,
                             addr_offset,
-                            self.ip + addr_offset as usize
+                            offset_addr,
                         );
-                        self.ip += addr_offset as usize;
+                        self.current_frame().incr_ip(addr_offset as usize);
                     } else {
-                        self.ip += SIZE_INSTRUCTION + SIZE_INDEX;
+                        self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
                     }
                 }
 
                 Bytecode::Loop => {
-                    let addr = chunk.get_data_u64(self.ip + SIZE_INSTRUCTION);
-                    println!("{:?} IP: {:X}, Addr: {:X}", op, self.ip, addr,);
-                    self.ip = addr as usize;
+                    let addr_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                    let addr = self.current_frame().get_chunk().get_data_u64(addr_addr);
+                    println!(
+                        "{:?} IP: {:X}, Addr: {:X}",
+                        op,
+                        self.current_frame().ip,
+                        addr,
+                    );
+                    self.current_frame().set_ip(addr as usize);
                 }
 
                 // Unary Ops
@@ -166,7 +214,7 @@ impl Vm {
                     let rhs = self.stack.pop().unwrap();
                     let result = Object::new(Value::new_from_bool(rhs.is_falsey()));
                     self.stack.push(result);
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
                 }
                 Bytecode::Neg => {
                     let rhs = self.stack.pop().unwrap();
@@ -181,7 +229,7 @@ impl Vm {
                         }
                     };
                     self.stack.push(Object::new(result));
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
                 }
 
                 // Binary Ops
@@ -197,7 +245,7 @@ impl Vm {
                     let lhs = self.stack.pop().unwrap();
                     let result = logic_op(&op, &lhs, &rhs)?;
                     self.stack.push(result);
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
                 }
 
                 // Binary Ops
@@ -206,7 +254,7 @@ impl Vm {
                     let lhs = self.stack.pop().unwrap();
                     let result = binary_op(&op, &lhs, &rhs)?;
                     self.stack.push(result);
-                    self.ip += SIZE_INSTRUCTION;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
                 }
                 _ => unimplemented!(),
             };
@@ -220,8 +268,7 @@ impl Vm {
     }
 
     fn load_function(&mut self, function: Function) -> Result<(), VmError> {
-        self.function = function;
-        self.ip = 0;
+        self.frames.push(Frame { function, ip: 0 });
         self.stack.clear();
         Ok(())
     }

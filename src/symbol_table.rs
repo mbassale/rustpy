@@ -28,6 +28,7 @@ impl SymbolTable {
         match obj {
             Some(mut obj) => {
                 obj.id = self.last_idx;
+                obj.name = name.to_string();
                 self.data.insert(self.last_idx, obj);
             }
             None => {

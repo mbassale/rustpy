@@ -90,7 +90,8 @@ impl Disassembler {
                     ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
 
-                Bytecode::Not
+                Bytecode::Call
+                | Bytecode::Not
                 | Bytecode::Neg
                 | Bytecode::And
                 | Bytecode::Or

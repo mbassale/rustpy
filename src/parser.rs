@@ -90,6 +90,10 @@ impl Parser {
         loop {
             let arg_name = match self.current_token() {
                 Token::Identifier(arg_name) => arg_name.to_string(),
+                Token::RightParen => {
+                    self.advance_token();
+                    break;
+                }
                 _ => break,
             };
             args.push(arg_name);
@@ -740,6 +744,30 @@ mod tests {
     #[test]
     fn test_function_and_call_expressions() {
         vec![
+            (
+                vec![
+                    Token::Def,
+                    Token::Identifier(String::from("test")),
+                    Token::LeftParen,
+                    Token::RightParen,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Return,
+                    Token::True,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::Function(FunctionExpression {
+                    name: String::from("test"),
+                    args: vec![],
+                    body: BlockExpression {
+                        exprs: vec![Box::new(Expression::Return(ReturnExpression {
+                            expr: Box::new(Expression::Literal(Literal::True)),
+                        }))],
+                    },
+                }))],
+            ),
             (
                 vec![
                     Token::Def,
