@@ -335,7 +335,7 @@ impl Parser {
                 args.push(argument);
                 self.match_token(&Token::Comma);
             }
-            return Ok(Box::new(Expression::Call(crate::ast::CallExpression {
+            return Ok(Box::new(Expression::Call(CallExpression {
                 callable: expr,
                 args,
             })));

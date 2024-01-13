@@ -1,13 +1,11 @@
 use crate::ast::Literal;
 use crate::bytecode::Bytecode;
-use crate::function::Function;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct Chunk {
     pub name: String,
     pub data: Vec<u8>,
     pub constants: Vec<Literal>,
-    pub functions: Vec<Box<Function>>,
 }
 
 impl Chunk {
@@ -16,7 +14,6 @@ impl Chunk {
             name: String::from("__main__"),
             data: Vec::new(),
             constants: Vec::new(),
-            functions: Vec::new(),
         }
     }
 

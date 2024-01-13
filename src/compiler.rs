@@ -69,7 +69,6 @@ impl Compiler<'_> {
             Expression::Variable(value) => self.emit_variable_op(function, &value),
             Expression::Literal(identifier) => self.emit_literal(chunk, &identifier),
             Expression::Empty => chunk.emit(Bytecode::Nop),
-            _ => (),
         };
     }
 

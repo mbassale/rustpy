@@ -91,6 +91,7 @@ impl Disassembler {
                 }
 
                 Bytecode::Call
+                | Bytecode::Return
                 | Bytecode::Not
                 | Bytecode::Neg
                 | Bytecode::And

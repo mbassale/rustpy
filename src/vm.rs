@@ -13,6 +13,7 @@ pub enum VmError {
 
 pub struct Frame {
     function: Function,
+    stack_size: usize,
     ip: usize,
 }
 
@@ -75,7 +76,11 @@ impl Vm {
     ) -> Result<Object, VmError> {
         dbg!(&globals);
         self.stack.clear();
-        self.frames.push(Frame { function, ip: 0 });
+        self.frames.push(Frame {
+            function,
+            stack_size: 0,
+            ip: 0,
+        });
 
         while !self.frames.is_empty() {
             let ret_val = self.interpret_function(globals)?;
@@ -163,11 +168,11 @@ impl Vm {
                     match &function_obj.value {
                         Value::Function(function) => {
                             self.current_frame().incr_ip(SIZE_INSTRUCTION);
-                            let frame = Frame {
+                            self.frames.push(Frame {
                                 function: function.clone(),
+                                stack_size: self.stack.len(),
                                 ip: 0,
-                            };
-                            self.frames.push(frame);
+                            });
                         }
                         _ => {
                             return Err(VmError::InvalidOperand(format!(
@@ -180,7 +185,15 @@ impl Vm {
 
                 Bytecode::Return => {
                     let ret_val = self.stack.pop().unwrap();
+                    let stack_size = self.current_frame().stack_size;
                     assert!(self.frames.pop().is_some());
+                    // pop frame locals
+                    println!(
+                        "Stack Size: {}, New Stack Size: {}",
+                        self.stack.len(),
+                        stack_size
+                    );
+                    self.stack.resize(stack_size, Object::new_none());
                     return Ok(ret_val);
                 }
 
@@ -281,11 +294,13 @@ impl Vm {
             };
         }
 
+        let stack_size = self.current_frame().stack_size;
         assert!(self.frames.pop().is_some());
         let result = match self.stack.pop() {
             Some(value) => value,
             _ => Object::new_none(),
         };
+        self.stack.resize(stack_size, Object::new_none());
         Ok(result)
     }
 }

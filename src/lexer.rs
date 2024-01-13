@@ -83,7 +83,7 @@ impl Lexer {
         }
 
         if chr == '"' {
-            return self.parse_string(chr);
+            return self.parse_string();
         }
 
         if chr.is_ascii_punctuation() {
@@ -109,7 +109,7 @@ impl Lexer {
         return Token::Error(format!("Error: invalid character: {}", chr));
     }
 
-    fn parse_string(&mut self, chr: char) -> Token {
+    fn parse_string(&mut self) -> Token {
         let mut buffer = String::new();
         self.index += 1;
         loop {

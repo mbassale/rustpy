@@ -15,6 +15,7 @@ use symbol_table::SymbolTable;
 
 use crate::compiler::{Compiler, CompilerError};
 use crate::disassembler::Disassembler;
+use crate::function::Function;
 use crate::lexer::Lexer;
 use crate::object::Value;
 use crate::parser::{Parser, ParserError};
@@ -65,9 +66,7 @@ impl Interpreter {
         };
         let function = dbg!(function);
 
-        let disassembler = Disassembler::new(function.chunk.clone());
-        let instructions = disassembler.disassemble();
-        dbg!(instructions);
+        disassemble_function(&function);
 
         let result = match self.vm.interpret(&mut self.globals, function) {
             Ok(result) => result,
@@ -90,4 +89,11 @@ impl Interpreter {
         }
         Ok(())
     }
+}
+
+fn disassemble_function(function: &Function) {
+    println!("===== Function: {} =====", function.name);
+    let disassembler = Disassembler::new(function.chunk.clone());
+    let instructions = disassembler.disassemble();
+    dbg!(instructions);
 }
