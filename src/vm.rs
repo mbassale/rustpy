@@ -126,6 +126,10 @@ impl Vm {
                     self.stack.push(object);
                     self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
                 }
+                Bytecode::Pop => {
+                    self.stack.pop().unwrap();
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
+                }
 
                 // Globals Manipulation
                 Bytecode::GetGlobal => {

@@ -76,15 +76,25 @@ test
 "###,
             100,
         ),
-        /*        (
-                    r###"
-        test = 1
-        while test < 0:
-          test = test + 1
-        test
-        "###,
-                    1,
-                ),*/
+        (
+            r###"
+test = 1
+while test < 0:
+  test = test + 1
+test
+"###,
+            1,
+        ),
+        (
+            r###"
+test = 0
+while test < 100:
+  local1 = 10
+  test = local1 + test
+test
+"###,
+            100,
+        ),
     ]
     .iter()
     .for_each(|(source, expected)| {

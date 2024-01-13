@@ -132,7 +132,7 @@ impl Compiler<'_> {
             .exprs
             .iter()
             .try_for_each(|expr| self.emit_expression(function, expr.as_ref()))?;
-        self.end_scope();
+        self.end_scope(function);
         Ok(())
     }
 
@@ -266,7 +266,7 @@ impl Compiler<'_> {
         unary_expr: &UnaryExpression,
     ) -> Result<(), CompilerError> {
         self.emit_expression(function, unary_expr.expr.as_ref())?;
-        self.emit_op(&mut function.chunk, &unary_expr.op);
+        self.emit_op(&mut function.chunk, &unary_expr.op)?;
         Ok(())
     }
 
@@ -277,7 +277,7 @@ impl Compiler<'_> {
     ) -> Result<(), CompilerError> {
         self.emit_expression(function, binary_expr.lhs.as_ref())?;
         self.emit_expression(function, binary_expr.rhs.as_ref())?;
-        self.emit_op(&mut function.chunk, &binary_expr.op);
+        self.emit_op(&mut function.chunk, &binary_expr.op)?;
         Ok(())
     }
 
@@ -383,7 +383,13 @@ impl Compiler<'_> {
         (self.locals.len() - 1) as u64
     }
 
-    fn end_scope(&mut self) {
+    fn end_scope(&mut self, function: &mut Function) {
         self.scope_depth -= 1;
+
+        while !self.locals.is_empty() && self.locals[self.locals.len() - 1].depth > self.scope_depth
+        {
+            function.chunk.emit(Bytecode::Pop);
+            self.locals.pop();
+        }
     }
 }
