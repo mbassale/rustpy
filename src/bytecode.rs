@@ -27,6 +27,7 @@ pub enum Bytecode {
 
     // Functions and Objects
     Call = 0x30,
+    Return = 0x31,
 
     // Control Flow
     Jump = 0x40,

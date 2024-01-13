@@ -74,7 +74,22 @@ impl Vm {
         function: Function,
     ) -> Result<Object, VmError> {
         dbg!(&globals);
-        self.load_function(function)?;
+        self.stack.clear();
+        self.frames.push(Frame { function, ip: 0 });
+
+        while !self.frames.is_empty() {
+            let ret_val = self.interpret_function(globals)?;
+            self.stack.push(ret_val);
+        }
+
+        let result = match self.stack.pop() {
+            Some(value) => value,
+            _ => Object::new_none(),
+        };
+        Ok(result)
+    }
+
+    fn interpret_function(&mut self, globals: &mut SymbolTable) -> Result<Object, VmError> {
         while self.current_frame().ip < self.current_frame().get_chunk().data.len() {
             let op = self.current_frame().get_opcode()?;
             println!("IP: {:X} OpCode: {:?}", self.current_frame().ip, op);
@@ -161,6 +176,12 @@ impl Vm {
                             )));
                         }
                     }
+                }
+
+                Bytecode::Return => {
+                    let ret_val = self.stack.pop().unwrap();
+                    assert!(self.frames.pop().is_some());
+                    return Ok(ret_val);
                 }
 
                 // Control Flow
@@ -260,17 +281,12 @@ impl Vm {
             };
         }
 
+        assert!(self.frames.pop().is_some());
         let result = match self.stack.pop() {
             Some(value) => value,
             _ => Object::new_none(),
         };
         Ok(result)
-    }
-
-    fn load_function(&mut self, function: Function) -> Result<(), VmError> {
-        self.frames.push(Frame { function, ip: 0 });
-        self.stack.clear();
-        Ok(())
     }
 }
 

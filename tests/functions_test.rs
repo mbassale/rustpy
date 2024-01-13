@@ -43,6 +43,21 @@ test()
 "###,
             Value::Integer(2),
         ),
+        (
+            r###"
+def two():
+  return 1 + 1
+
+def six():
+  return 6
+
+result = 1
+result = two()
+result = result * six()
+result
+"###,
+            Value::Integer(12),
+        ),
     ]
     .into_iter()
     .for_each(|(source, expected)| {

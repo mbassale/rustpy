@@ -1,6 +1,7 @@
 use crate::ast::{
     AssignmentExpression, BinaryExpression, BlockExpression, CallExpression, Expression,
-    FunctionExpression, IfExpression, Literal, Operator, Program, UnaryExpression, WhileExpression,
+    FunctionExpression, IfExpression, Literal, Operator, Program, ReturnExpression,
+    UnaryExpression, WhileExpression,
 };
 use crate::bytecode::Bytecode;
 use crate::chunk::Chunk;
@@ -58,6 +59,9 @@ impl Compiler<'_> {
             Expression::If(if_expression) => self.emit_if_expression(function, &if_expression),
             Expression::While(while_expression) => {
                 self.emit_while_expression(function, &while_expression)
+            }
+            Expression::Return(return_expression) => {
+                self.emit_return_expression(function, &return_expression)
             }
             Expression::Assignment(assignment) => self.emit_assignment_op(function, &assignment),
             Expression::Unary(unary) => self.emit_unary_op(function, &unary),
@@ -158,6 +162,18 @@ impl Compiler<'_> {
         // exit address
         let exit_addr = chunk.size();
         chunk.patch_jump_addr(jump_offset_addr, exit_addr);
+    }
+
+    fn emit_return_expression(
+        &mut self,
+        function: &mut Function,
+        return_expression: &ReturnExpression,
+    ) {
+        match return_expression.expr.as_ref() {
+            Expression::Empty => function.chunk.emit(Bytecode::None),
+            _ => self.emit_expression(function, return_expression.expr.as_ref()),
+        };
+        function.chunk.emit(Bytecode::Return);
     }
 
     fn emit_assignment_op(
