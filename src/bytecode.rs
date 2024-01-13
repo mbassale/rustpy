@@ -21,9 +21,11 @@ pub enum Bytecode {
     Not = 0x11,
     Neg = 0x12,
 
-    // Globals Manipulation
+    // Globals & Locals Manipulation
     SetGlobal = 0x20,
     GetGlobal = 0x21,
+    SetLocal = 0x22,
+    GetLocal = 0x23,
 
     // Functions and Objects
     Call = 0x30,

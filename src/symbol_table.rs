@@ -19,8 +19,8 @@ impl SymbolTable {
         self.data.get(&id)
     }
 
-    pub fn set(&mut self, id: u64, obj: Object) {
-        self.data.insert(id, obj);
+    pub fn get_mut(&mut self, id: u64) -> &mut Object {
+        self.data.get_mut(&id).unwrap()
     }
 
     pub fn insert(&mut self, name: &str, obj: Option<Object>) -> u64 {
@@ -37,14 +37,6 @@ impl SymbolTable {
             }
         };
         self.last_idx
-    }
-
-    pub fn extend(&mut self, symbol_table: SymbolTable) {
-        self.data.extend(symbol_table.data);
-    }
-
-    pub fn contains(&self, id: u64) -> bool {
-        self.data.contains_key(&id)
     }
 
     pub fn contains_name(&self, name: &str) -> bool {

@@ -131,7 +131,7 @@ impl Vm {
                 Bytecode::GetGlobal => {
                     let index_addr = self.current_frame().ip + SIZE_INSTRUCTION;
                     let index = self.current_frame().get_chunk().get_data_u64(index_addr);
-                    let object = match globals.get(index) {
+                    let global_obj = match globals.get(index) {
                         Some(obj) => obj,
                         None => {
                             return Err(VmError::UndefinedName(format!(
@@ -140,17 +140,36 @@ impl Vm {
                             )))
                         }
                     };
-                    self.stack.push(object.clone());
+                    self.stack.push(global_obj.clone());
                     self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
                 }
                 Bytecode::SetGlobal => {
+                    let index_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                    let index = self.current_frame().get_chunk().get_data_u64(index_addr);
                     let rhs = self.stack.pop().unwrap();
-                    let mut lhs = self.stack.pop().unwrap();
-                    let index = globals.get_index(&lhs.name);
-                    lhs.value = rhs.value.clone();
-                    globals.set(index, lhs.clone());
-                    self.stack.push(lhs);
-                    self.current_frame().ip += SIZE_INSTRUCTION;
+                    let global_obj = globals.get_mut(index);
+                    global_obj.value = rhs.value;
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
+                }
+
+                // Locals Manipulation
+                Bytecode::GetLocal => {
+                    let index_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                    let stack_offset = self.current_frame().get_chunk().get_data_u64(index_addr);
+                    let local_obj = self.stack[stack_offset as usize].clone();
+                    self.stack.push(local_obj);
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
+                }
+                Bytecode::SetLocal => {
+                    let index_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                    let stack_offset = self.current_frame().get_chunk().get_data_u64(index_addr);
+                    match self.stack.last() {
+                        Some(local_obj) => {
+                            self.stack[stack_offset as usize] = local_obj.clone();
+                        }
+                        None => panic!("SetLocal on empty stack"),
+                    };
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
                 }
 
                 Bytecode::Call => {

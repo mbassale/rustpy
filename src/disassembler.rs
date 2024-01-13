@@ -60,7 +60,7 @@ impl Disassembler {
                     result.push(Instruction {
                         ip,
                         op,
-                        index: self.chunk.get_data_u64_safe(ip + 1),
+                        index: self.chunk.get_data_u64_safe(ip + SIZE_INSTRUCTION),
                     });
                     ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
@@ -68,15 +68,15 @@ impl Disassembler {
                     result.push(Instruction {
                         ip,
                         op,
-                        index: None,
+                        index: self.chunk.get_data_u64_safe(ip + SIZE_INSTRUCTION),
                     });
-                    ip += SIZE_INSTRUCTION;
+                    ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
                 Bytecode::GetGlobal => {
                     result.push(Instruction {
                         ip,
                         op,
-                        index: self.chunk.get_data_u64_safe(ip + 1),
+                        index: self.chunk.get_data_u64_safe(ip + SIZE_INSTRUCTION),
                     });
                     ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
@@ -85,7 +85,7 @@ impl Disassembler {
                     result.push(Instruction {
                         ip,
                         op,
-                        index: self.chunk.get_data_u64_safe(ip + 1),
+                        index: self.chunk.get_data_u64_safe(ip + SIZE_INSTRUCTION),
                     });
                     ip += SIZE_INSTRUCTION + SIZE_INDEX;
                 }
