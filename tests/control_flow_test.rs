@@ -1,3 +1,4 @@
+use rustpy::config::Config;
 use rustpy::object::Value;
 use rustpy::Interpreter;
 
@@ -52,7 +53,7 @@ else:
     ]
     .iter()
     .for_each(|(source, expected)| {
-        let mut interpreter = Interpreter::new();
+        let mut interpreter = Interpreter::new(Config { trace: true });
         let result = interpreter.run(source);
         assert!(result.is_ok());
         let value = result.unwrap();
@@ -98,7 +99,7 @@ test
     ]
     .iter()
     .for_each(|(source, expected)| {
-        let mut interpreter = Interpreter::new();
+        let mut interpreter = Interpreter::new(Config { trace: true });
         let result = interpreter.run(source);
         assert!(result.is_ok());
         let value = result.unwrap();

@@ -1,5 +1,6 @@
 use crate::bytecode::{Bytecode, SIZE_INDEX, SIZE_INSTRUCTION};
 use crate::chunk::Chunk;
+use crate::config::Config;
 use crate::function::Function;
 use crate::object::{Object, Value};
 use crate::symbol_table::SymbolTable;
@@ -46,6 +47,7 @@ impl Frame {
 }
 
 pub struct Vm {
+    config: Config,
     stack: Vec<Object>,
     frames: Vec<Frame>,
 }
@@ -53,6 +55,7 @@ pub struct Vm {
 impl Vm {
     pub fn new() -> Vm {
         Vm {
+            config: Config::new(),
             stack: Vec::new(),
             frames: Vec::new(),
         }
@@ -66,21 +69,30 @@ impl Vm {
     }
 
     fn dump_stack(&self) {
+        println!("===== Stack =====");
         dbg!(&self.stack);
+        println!("=================");
     }
 
     pub fn interpret(
         &mut self,
+        config: Config,
         globals: &mut SymbolTable,
         function: Function,
     ) -> Result<Object, VmError> {
-        dbg!(&globals);
+        self.config = config;
         self.stack.clear();
         self.frames.push(Frame {
             function,
             stack_size: 0,
             ip: 0,
         });
+
+        if self.config.trace {
+            println!("===== Globals =====");
+            dbg!(&globals);
+            println!("===================");
+        }
 
         while !self.frames.is_empty() {
             let ret_val = self.interpret_function(globals)?;
@@ -95,10 +107,18 @@ impl Vm {
     }
 
     fn interpret_function(&mut self, globals: &mut SymbolTable) -> Result<Object, VmError> {
+        if self.config.trace {
+            println!(
+                "===== INTERPRETING: {} =====",
+                self.current_frame().function.name
+            );
+        }
         while self.current_frame().ip < self.current_frame().get_chunk().data.len() {
             let op = self.current_frame().get_opcode()?;
-            println!("IP: {:X} OpCode: {:?}", self.current_frame().ip, op);
-            self.dump_stack();
+            if self.config.trace {
+                println!("IP: {:X} OpCode: {:?}", self.current_frame().ip, op);
+                self.dump_stack();
+            }
 
             match op {
                 Bytecode::Nop => {
@@ -211,11 +231,13 @@ impl Vm {
                     let stack_size = self.current_frame().stack_size;
                     assert!(self.frames.pop().is_some());
                     // pop frame locals
-                    println!(
-                        "Stack Size: {}, New Stack Size: {}",
-                        self.stack.len(),
-                        stack_size
-                    );
+                    if self.config.trace {
+                        println!(
+                            "Stack Size: {}, New Stack Size: {}",
+                            self.stack.len(),
+                            stack_size
+                        );
+                    }
                     self.stack.resize(stack_size, Object::new_none());
                     return Ok(ret_val);
                 }
@@ -230,13 +252,15 @@ impl Vm {
                 Bytecode::Jump => {
                     let offset_addr = self.current_frame().ip + SIZE_INSTRUCTION;
                     let addr_offset = self.current_frame().get_chunk().get_data_u64(offset_addr);
-                    println!(
-                        "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
-                        op,
-                        self.current_frame().ip,
-                        addr_offset,
-                        offset_addr
-                    );
+                    if self.config.trace {
+                        println!(
+                            "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
+                            op,
+                            self.current_frame().ip,
+                            addr_offset,
+                            offset_addr
+                        );
+                    }
                     self.current_frame().incr_ip(addr_offset as usize);
                 }
 
@@ -247,13 +271,15 @@ impl Vm {
                         let offset_addr = self.current_frame().ip + SIZE_INSTRUCTION;
                         let addr_offset =
                             self.current_frame().get_chunk().get_data_u64(offset_addr);
-                        println!(
-                            "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
-                            op,
-                            self.current_frame().ip,
-                            addr_offset,
-                            offset_addr,
-                        );
+                        if self.config.trace {
+                            println!(
+                                "{:?} IP: {:X}, AddrOffset: {:X}, Result: {:X}",
+                                op,
+                                self.current_frame().ip,
+                                addr_offset,
+                                offset_addr,
+                            );
+                        }
                         self.current_frame().incr_ip(addr_offset as usize);
                     } else {
                         self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
@@ -263,12 +289,14 @@ impl Vm {
                 Bytecode::Loop => {
                     let addr_addr = self.current_frame().ip + SIZE_INSTRUCTION;
                     let addr = self.current_frame().get_chunk().get_data_u64(addr_addr);
-                    println!(
-                        "{:?} IP: {:X}, Addr: {:X}",
-                        op,
-                        self.current_frame().ip,
-                        addr,
-                    );
+                    if self.config.trace {
+                        println!(
+                            "{:?} IP: {:X}, Addr: {:X}",
+                            op,
+                            self.current_frame().ip,
+                            addr,
+                        );
+                    }
                     self.current_frame().set_ip(addr as usize);
                 }
 

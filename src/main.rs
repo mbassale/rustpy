@@ -1,4 +1,6 @@
 use clap::Parser;
+use rustpy::config::Config;
+use rustpy::object::Value;
 use std::fs;
 use std::io::{self, Error, Write};
 
@@ -34,13 +36,21 @@ fn read_source() -> Result<String, Error> {
     Ok(source.trim().to_string())
 }
 
-fn exec(path: String) -> io::Result<()> {
+fn print_result(value: Value) {
+    println!("***** RESULT *****");
+    println!("{:?}", value);
+    println!("******************");
+}
+
+fn exec(path: String, config: Config) -> io::Result<()> {
     let source = fs::read_to_string(path)?;
 
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new(config.clone());
     match interpreter.run(&source) {
         Ok(value) => {
-            println!("{:?}", value);
+            if config.trace {
+                print_result(value);
+            }
         }
         Err(err) => {
             eprintln!("{:?}", err);
@@ -49,20 +59,21 @@ fn exec(path: String) -> io::Result<()> {
     Ok(())
 }
 
-fn repl() -> io::Result<()> {
-    let mut interpreter = Interpreter::new();
+fn repl(config: Config) -> io::Result<()> {
+    let mut interpreter = Interpreter::new(config.clone());
     loop {
         print!("> ");
         io::stdout().flush()?;
         let source = read_source()?;
-        println!("Source:\n\"{}\"\n", source);
         if source == "quit" {
             break;
         }
 
         match interpreter.run(&source) {
             Ok(value) => {
-                dbg!(value);
+                if config.trace {
+                    print_result(value);
+                }
             }
             Err(err) => {
                 eprintln!("{:?}", err);
@@ -77,10 +88,12 @@ fn main() -> io::Result<()> {
 
     let cli = Args::parse();
 
+    let config = Config { trace: cli.trace };
+
     if let Some(path) = cli.path {
-        exec(path)?;
+        exec(path, config)?;
     } else {
-        repl()?;
+        repl(config)?;
     }
     Ok(())
 }
