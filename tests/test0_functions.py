@@ -2,8 +2,17 @@
 def test():
     return True
 
-if test() == True:
-    "branch1"
-else:
-    "branch2"
+def multiply(n, factor):
+    print n
+    print factor
+    result = n * factor
+    return result
 
+if test() == True:
+    print "test(): True"
+else:
+    print "test(): False"
+
+result = multiply(10, 2)
+print result
+result

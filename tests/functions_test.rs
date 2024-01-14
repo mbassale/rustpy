@@ -2,6 +2,8 @@ use rustpy::config::Config;
 use rustpy::object::Value;
 use rustpy::Interpreter;
 
+mod common;
+
 #[test]
 fn function_definition() {
     vec![(
@@ -66,6 +68,10 @@ def double(n):
 
 double(10)
         "###,
+            Value::Integer(20),
+        ),
+        (
+            &common::load_source("tests/test0_functions.py"),
             Value::Integer(20),
         ),
     ]
