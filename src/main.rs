@@ -1,6 +1,19 @@
+use clap::Parser;
+use std::fs;
 use std::io::{self, Error, Write};
 
 use rustpy::Interpreter;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about=None)]
+struct Args {
+    // Load script
+    path: Option<String>,
+
+    // dump trace information, instructions, disassembly, etc.
+    #[arg(short, long)]
+    trace: bool,
+}
 
 fn read_source() -> Result<String, Error> {
     let mut source = String::new();
@@ -21,7 +34,22 @@ fn read_source() -> Result<String, Error> {
     Ok(source.trim().to_string())
 }
 
-fn repl() -> Result<(), Error> {
+fn exec(path: String) -> io::Result<()> {
+    let source = fs::read_to_string(path)?;
+
+    let mut interpreter = Interpreter::new();
+    match interpreter.run(&source) {
+        Ok(value) => {
+            println!("{:?}", value);
+        }
+        Err(err) => {
+            eprintln!("{:?}", err);
+        }
+    }
+    Ok(())
+}
+
+fn repl() -> io::Result<()> {
     let mut interpreter = Interpreter::new();
     loop {
         print!("> ");
@@ -44,10 +72,15 @@ fn repl() -> Result<(), Error> {
     Ok(())
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     println!("Rust Python Interpreter");
-    match repl() {
-        Ok(_) => (),
-        Err(err) => eprintln!("Err: {:?}", err),
-    };
+
+    let cli = Args::parse();
+
+    if let Some(path) = cli.path {
+        exec(path)?;
+    } else {
+        repl()?;
+    }
+    Ok(())
 }

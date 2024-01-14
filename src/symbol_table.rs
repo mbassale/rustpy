@@ -51,8 +51,4 @@ impl SymbolTable {
         }
         unreachable!();
     }
-
-    pub fn clear(&mut self) {
-        self.data.clear();
-    }
 }
