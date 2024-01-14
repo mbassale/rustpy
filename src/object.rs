@@ -1,6 +1,7 @@
 use crate::ast::Literal;
 use crate::function::Function;
 use std::collections::hash_map::DefaultHasher;
+use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Hash)]
@@ -95,6 +96,22 @@ impl Hash for Value {
             Self::Integer(value) => value.hash(state),
             Self::String(value) => value.hash(state),
             Self::Function(function) => function.name.hash(state),
+        }
+    }
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::None => write!(f, "None"),
+            Self::True => write!(f, "True"),
+            Self::False => write!(f, "False"),
+            Self::Integer(value) => write!(f, "{}", value),
+            Self::Float(value) => write!(f, "{}", value),
+            Self::String(value) => write!(f, "{}", value),
+            Self::Function(function) => {
+                write!(f, "<function:{}:{}>", function.name, function.arity)
+            }
         }
     }
 }

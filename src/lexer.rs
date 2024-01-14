@@ -207,6 +207,7 @@ impl Lexer {
             'b' => self.consume(Token::Break, "break"),
             'r' => self.consume(Token::Return, "return"),
             'T' => self.consume(Token::True, "True"),
+            'p' => self.consume(Token::Print, "print"),
             _ => None,
         }
     }
@@ -333,8 +334,9 @@ mod tests {
             ("None", vec![Token::None, Token::Eof]),
             ("True", vec![Token::True, Token::Eof]),
             ("False", vec![Token::False, Token::Eof]),
+            ("print", vec![Token::Print, Token::Eof]),
             (
-                "and or if in def elif else continue break return None True False",
+                "and or if in def elif else continue break return None True False print",
                 vec![
                     Token::And,
                     Token::Or,
@@ -349,6 +351,7 @@ mod tests {
                     Token::None,
                     Token::True,
                     Token::False,
+                    Token::Print,
                     Token::Eof,
                 ],
             ),
@@ -435,7 +438,7 @@ mod tests {
         vec![
             (
                 r###"if x > 0:
-  return 1
+  print True
 else:
   return 0
 "###,
@@ -447,8 +450,8 @@ else:
                     Token::Colon,
                     Token::NewLine,
                     Token::Indent,
-                    Token::Return,
-                    Token::Integer(1),
+                    Token::Print,
+                    Token::True,
                     Token::NewLine,
                     Token::Dedent,
                     Token::Else,
@@ -465,6 +468,7 @@ else:
             (
                 r###"
 def test(arg1, arg2, arg3):
+  print arg1 + arg2 + arg3
   return True
 "###,
                 vec![
@@ -481,6 +485,13 @@ def test(arg1, arg2, arg3):
                     Token::Colon,
                     Token::NewLine,
                     Token::Indent,
+                    Token::Print,
+                    Token::Identifier(String::from("arg1")),
+                    Token::Plus,
+                    Token::Identifier(String::from("arg2")),
+                    Token::Plus,
+                    Token::Identifier(String::from("arg3")),
+                    Token::NewLine,
                     Token::Return,
                     Token::True,
                     Token::NewLine,

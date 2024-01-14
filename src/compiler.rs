@@ -1,7 +1,7 @@
 use crate::ast::{
     AssignmentExpression, BinaryExpression, BlockExpression, CallExpression, Expression,
-    FunctionExpression, IfExpression, Literal, Operator, Program, ReturnExpression,
-    UnaryExpression, WhileExpression,
+    FunctionExpression, IfExpression, Literal, Operator, PrintExpression, Program,
+    ReturnExpression, UnaryExpression, WhileExpression,
 };
 use crate::bytecode::Bytecode;
 use crate::chunk::Chunk;
@@ -83,6 +83,9 @@ impl Compiler<'_> {
             }
             Expression::Return(return_expression) => {
                 self.emit_return_expression(function, &return_expression)
+            }
+            Expression::Print(print_expression) => {
+                self.emit_print_expression(function, &print_expression)
             }
             Expression::Assignment(assignment) => self.emit_assignment_op(function, &assignment),
             Expression::Unary(unary) => self.emit_unary_op(function, &unary),
@@ -226,6 +229,16 @@ impl Compiler<'_> {
             _ => self.emit_expression(function, return_expression.expr.as_ref())?,
         };
         function.chunk.emit(Bytecode::Return);
+        Ok(())
+    }
+
+    fn emit_print_expression(
+        &mut self,
+        function: &mut Function,
+        print_expression: &PrintExpression,
+    ) -> Result<(), CompilerError> {
+        self.emit_expression(function, print_expression.expr.as_ref())?;
+        function.chunk.emit(Bytecode::Print);
         Ok(())
     }
 

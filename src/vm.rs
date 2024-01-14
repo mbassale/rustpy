@@ -220,6 +220,12 @@ impl Vm {
                     return Ok(ret_val);
                 }
 
+                Bytecode::Print => {
+                    let object = self.stack.pop().unwrap();
+                    println!("{}", object.value);
+                    self.current_frame().incr_ip(SIZE_INSTRUCTION);
+                }
+
                 // Control Flow
                 Bytecode::Jump => {
                     let offset_addr = self.current_frame().ip + SIZE_INSTRUCTION;
