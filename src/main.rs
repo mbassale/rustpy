@@ -1,6 +1,7 @@
 use clap::Parser;
+use log::{error, trace, LevelFilter};
 use rustpy::config::Config;
-use rustpy::object::Value;
+use simple_logger::SimpleLogger;
 use std::fs;
 use std::io::{self, Error, Write};
 
@@ -36,24 +37,16 @@ fn read_source() -> Result<String, Error> {
     Ok(source.trim().to_string())
 }
 
-fn print_result(value: Value) {
-    println!("***** RESULT *****");
-    println!("{:?}", value);
-    println!("******************");
-}
-
 fn exec(path: String, config: Config) -> io::Result<()> {
     let source = fs::read_to_string(path)?;
 
     let mut interpreter = Interpreter::new(config.clone());
     match interpreter.run(&source) {
         Ok(value) => {
-            if config.trace {
-                print_result(value);
-            }
+            trace!("Result: {:?}", value);
         }
         Err(err) => {
-            eprintln!("{:?}", err);
+            error!("Error: {:?}", err);
         }
     }
     Ok(())
@@ -71,12 +64,10 @@ fn repl(config: Config) -> io::Result<()> {
 
         match interpreter.run(&source) {
             Ok(value) => {
-                if config.trace {
-                    print_result(value);
-                }
+                trace!("Result: {:?}", value);
             }
             Err(err) => {
-                eprintln!("{:?}", err);
+                error!("Error: {:?}", err);
             }
         };
     }
@@ -86,9 +77,16 @@ fn repl(config: Config) -> io::Result<()> {
 fn main() -> io::Result<()> {
     println!("Rust Python Interpreter");
 
+    SimpleLogger::new().init().unwrap();
+
     let cli = Args::parse();
 
     let config = Config { trace: cli.trace };
+    if config.trace {
+        log::set_max_level(LevelFilter::Trace);
+    } else {
+        log::set_max_level(LevelFilter::Info);
+    }
 
     if let Some(path) = cli.path {
         exec(path, config)?;

@@ -304,7 +304,10 @@ impl Compiler<'_> {
             if self.globals.contains_name(identifier) {
                 index = self.globals.get_index(identifier);
             } else {
-                panic!("Emit NameNotFound");
+                return Err(CompilerError::NameNotFound(format!(
+                    "Name {} not found",
+                    identifier
+                )));
             }
             function.chunk.emit(Bytecode::GetGlobal);
             function.chunk.emit_index(index);
@@ -321,7 +324,10 @@ impl Compiler<'_> {
                 function.chunk.emit(Bytecode::GetLocal);
                 function.chunk.emit_index(index as u64);
             } else {
-                panic!("Emit NameNotFound");
+                return Err(CompilerError::NameNotFound(format!(
+                    "Name {} not found",
+                    identifier
+                )));
             }
         }
         Ok(())
