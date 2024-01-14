@@ -25,24 +25,24 @@ True
 #[test]
 fn function_call() {
     vec![
-        /*        (
-                    r###"
-        def test():
-          True
+        (
+            r###"
+def test():
+  True
 
-        test()
-        "###,
-                    Value::True,
-                ),
-                (
-                    r###"
-        def test():
-          1 + 1
+ test()
+ "###,
+            Value::True,
+        ),
+        (
+            r###"
+ def test():
+   1 + 1
 
-        test()
-        "###,
-                    Value::Integer(2),
-                ), */
+ test()
+ "###,
+            Value::Integer(2),
+        ),
         (
             r###"
 def two():
@@ -57,6 +57,15 @@ result = result * six()
 result
 "###,
             Value::Integer(12),
+        ),
+        (
+            r###"
+def double(n):
+  return 2 * n
+
+double(10)
+        "###,
+            Value::Integer(20),
         ),
     ]
     .into_iter()
