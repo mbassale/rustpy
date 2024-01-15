@@ -81,6 +81,7 @@ impl Compiler<'_> {
             Expression::While(while_expression) => {
                 self.emit_while_expression(function, &while_expression)
             }
+            Expression::Continue | Expression::Break => Ok(()),
             Expression::Return(return_expression) => {
                 self.emit_return_expression(function, &return_expression)
             }

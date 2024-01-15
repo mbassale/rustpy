@@ -16,6 +16,7 @@ pub struct Parser {
     tokens: Vec<Token>,
     index: usize,
     program: Program,
+    loop_count: usize,
 }
 
 impl Parser {
@@ -28,6 +29,7 @@ impl Parser {
                 .collect(),
             index: 0,
             program: Program::new(),
+            loop_count: 0,
         }
     }
 
@@ -51,6 +53,10 @@ impl Parser {
             self.parse_if_expression()
         } else if self.match_token(&Token::While) {
             self.parse_while_expression()
+        } else if self.match_token(&Token::Continue) {
+            self.parse_continue_expression()
+        } else if self.match_token(&Token::Break) {
+            self.parse_break_expression()
         } else if self.match_token(&Token::Return) {
             self.parse_return_expression()
         } else if self.match_token(&Token::Print) {
@@ -204,6 +210,8 @@ impl Parser {
     fn parse_while_expression(&mut self) -> Result<Box<Expression>, ParserError> {
         let condition = self.parse_expression()?;
 
+        self.loop_count += 1;
+
         let body;
         if self.match_token(&Token::Colon) {
             body = self.parse_expression()?;
@@ -213,10 +221,30 @@ impl Parser {
             )));
         }
 
+        self.loop_count -= 1;
+
         Ok(Box::new(Expression::While(WhileExpression {
             condition,
             body,
         })))
+    }
+
+    fn parse_continue_expression(&mut self) -> Result<Box<Expression>, ParserError> {
+        if self.loop_count == 0 {
+            return Err(ParserError::InvalidExpression(String::from(
+                "continue without loop",
+            )));
+        }
+        Ok(Box::new(Expression::Continue))
+    }
+
+    fn parse_break_expression(&mut self) -> Result<Box<Expression>, ParserError> {
+        if self.loop_count == 0 {
+            return Err(ParserError::InvalidExpression(String::from(
+                "break without loop",
+            )));
+        }
+        Ok(Box::new(Expression::Break))
     }
 
     fn parse_return_expression(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -715,28 +743,49 @@ mod tests {
 
     #[test]
     fn test_while_expression() {
-        vec![(
-            vec![
-                Token::While,
-                Token::True,
-                Token::Colon,
-                Token::NewLine,
-                Token::Indent,
-                Token::True,
-                Token::True,
-                Token::Dedent,
-                Token::Eof,
-            ],
-            vec![Box::new(Expression::While(WhileExpression {
-                condition: Box::new(Expression::Literal(Literal::True)),
-                body: Box::new(Expression::Block(BlockExpression {
-                    exprs: vec![
-                        Box::new(Expression::Literal(Literal::True)),
-                        Box::new(Expression::Literal(Literal::True)),
-                    ],
-                })),
-            }))],
-        )]
+        vec![
+            (
+                vec![
+                    Token::While,
+                    Token::True,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::True,
+                    Token::True,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::While(WhileExpression {
+                    condition: Box::new(Expression::Literal(Literal::True)),
+                    body: Box::new(Expression::Block(BlockExpression {
+                        exprs: vec![
+                            Box::new(Expression::Literal(Literal::True)),
+                            Box::new(Expression::Literal(Literal::True)),
+                        ],
+                    })),
+                }))],
+            ),
+            (
+                vec![
+                    Token::While,
+                    Token::True,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Break,
+                    Token::Continue,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+                vec![Box::new(Expression::While(WhileExpression {
+                    condition: Box::new(Expression::Literal(Literal::True)),
+                    body: Box::new(Expression::Block(BlockExpression {
+                        exprs: vec![Box::new(Expression::Break), Box::new(Expression::Continue)],
+                    })),
+                }))],
+            ),
+        ]
         .into_iter()
         .for_each(|(tokens, exprs)| {
             let mut parser = Parser::new(tokens);
@@ -746,6 +795,43 @@ mod tests {
             };
             assert_eq!(program.stmts, exprs);
         });
+    }
+
+    #[test]
+    fn test_break_continue_without_loop() {
+        vec![
+            (
+                vec![
+                    Token::Print,
+                    Token::Integer(1),
+                    Token::NewLine,
+                    Token::Continue,
+                ],
+                "continue",
+            ),
+            (
+                vec![
+                    Token::Print,
+                    Token::Integer(1),
+                    Token::NewLine,
+                    Token::Break,
+                ],
+                "break",
+            ),
+        ]
+        .into_iter()
+        .for_each(|(tokens, error_substr)| {
+            let mut parser = Parser::new(tokens);
+            let result = parser.parse();
+            assert!(result.is_err());
+            let err = result.unwrap_err();
+            match err {
+                ParserError::InvalidExpression(error_message) => {
+                    assert!(error_message.contains(error_substr));
+                }
+                _ => assert!(false),
+            };
+        })
     }
 
     #[test]

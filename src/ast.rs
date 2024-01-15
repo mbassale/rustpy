@@ -34,6 +34,8 @@ pub enum Expression {
     Call(CallExpression),
     If(IfExpression),
     While(WhileExpression),
+    Continue,
+    Break,
     Return(ReturnExpression),
     Print(PrintExpression),
     Assignment(AssignmentExpression),
