@@ -96,6 +96,29 @@ test
 "###,
             100,
         ),
+        (
+            r###"
+test = 1
+while test < 10:
+  if test >= 5:
+    break
+  test = test + 1
+test
+"###,
+            5,
+        ),
+        (
+            r###"
+test = 1
+while test < 10:
+  if test == 5:
+    test = 20
+    continue
+  test = test + 1
+test
+"###,
+            20,
+        ),
     ]
     .iter()
     .for_each(|(source, expected)| {

@@ -12,6 +12,7 @@ use crate::symbol_table::SymbolTable;
 #[derive(Clone, Debug)]
 pub enum CompilerError {
     NameNotFound(String),
+    InvalidExpression(String),
 }
 
 struct Local {
@@ -24,6 +25,8 @@ pub struct Compiler<'a> {
     globals: &'a mut SymbolTable,
     locals: Vec<Local>,
     scope_depth: usize,
+    continue_addr_stack: Vec<u64>,
+    break_addr_stack: Vec<u64>,
 }
 
 impl Compiler<'_> {
@@ -33,6 +36,8 @@ impl Compiler<'_> {
             globals,
             locals: Vec::new(),
             scope_depth: 0,
+            continue_addr_stack: Vec::new(),
+            break_addr_stack: Vec::new(),
         }
     }
 
@@ -81,7 +86,8 @@ impl Compiler<'_> {
             Expression::While(while_expression) => {
                 self.emit_while_expression(function, &while_expression)
             }
-            Expression::Continue | Expression::Break => Ok(()),
+            Expression::Continue => self.emit_continue_statement(function),
+            Expression::Break => self.emit_break_statement(function),
             Expression::Return(return_expression) => {
                 self.emit_return_expression(function, &return_expression)
             }
@@ -202,12 +208,19 @@ impl Compiler<'_> {
     ) -> Result<(), CompilerError> {
         // emit conditional
         let start_addr = function.chunk.size();
+
+        self.continue_addr_stack.push(start_addr);
+        let start_break_addr_stack_size = self.break_addr_stack.len();
+
         self.emit_expression(function, while_expr.condition.as_ref())?;
         function.chunk.emit(Bytecode::JumpIfFalse);
         let jump_offset_addr = function.chunk.emit_index(0);
 
         // emit body
         self.emit_expression(function, while_expr.body.as_ref())?;
+
+        // next continue should not refer to this loop
+        self.continue_addr_stack.pop();
 
         // loop to the beginning
         let chunk = &mut function.chunk;
@@ -217,6 +230,32 @@ impl Compiler<'_> {
         // exit address
         let exit_addr = chunk.size();
         chunk.patch_jump_addr(jump_offset_addr, exit_addr);
+
+        // patch break jumps
+        while self.break_addr_stack.len() > start_break_addr_stack_size {
+            let jump_offset_addr = self.break_addr_stack.pop().unwrap();
+            chunk.patch_jump_addr(jump_offset_addr, exit_addr);
+        }
+
+        Ok(())
+    }
+
+    fn emit_continue_statement(&mut self, function: &mut Function) -> Result<(), CompilerError> {
+        if self.continue_addr_stack.is_empty() {
+            return Err(CompilerError::InvalidExpression(String::from(
+                "continue without loop",
+            )));
+        }
+        let loop_start_addr = self.continue_addr_stack.last().unwrap();
+        function.chunk.emit(Bytecode::Loop);
+        function.chunk.emit_index(*loop_start_addr);
+        Ok(())
+    }
+
+    fn emit_break_statement(&mut self, function: &mut Function) -> Result<(), CompilerError> {
+        function.chunk.emit(Bytecode::Jump);
+        let break_offset_addr = function.chunk.emit_index(0);
+        self.break_addr_stack.push(break_offset_addr);
         Ok(())
     }
 
