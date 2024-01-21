@@ -1,5 +1,6 @@
 use crate::ast::Literal;
 use crate::function::Function;
+use crate::native::NativeFunction;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
@@ -20,6 +21,7 @@ pub enum Value {
     Float(f64),
     String(String),
     Function(Function),
+    NativeFunction(NativeFunction),
 }
 
 impl Value {
@@ -40,6 +42,7 @@ impl Value {
             Value::Float(value) => *value != 0.0,
             Value::String(value) => !value.is_empty(),
             Value::Function(_) => true,
+            Value::NativeFunction(_) => true,
         }
     }
 
@@ -52,6 +55,7 @@ impl Value {
             Value::Float(value) => *value == 0.0,
             Value::String(value) => value.is_empty(),
             Value::Function(_) => false,
+            Value::NativeFunction(_) => false,
         }
     }
 
@@ -79,6 +83,7 @@ impl Value {
     pub fn is_callable(&self) -> bool {
         match self {
             Value::Function(_) => true,
+            Value::NativeFunction(_) => true,
             _ => false,
         }
     }
@@ -96,6 +101,7 @@ impl Hash for Value {
             Self::Integer(value) => value.hash(state),
             Self::String(value) => value.hash(state),
             Self::Function(function) => function.name.hash(state),
+            Self::NativeFunction(function) => function.name.hash(state),
         }
     }
 }
@@ -111,6 +117,9 @@ impl Display for Value {
             Self::String(value) => write!(f, "{}", value),
             Self::Function(function) => {
                 write!(f, "<function:{}:{}>", function.name, function.arity)
+            }
+            Self::NativeFunction(function) => {
+                write!(f, "<native:{}:{}>", function.name, function.arity)
             }
         }
     }

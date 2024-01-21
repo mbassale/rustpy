@@ -6,12 +6,15 @@ pub mod config;
 mod disassembler;
 mod function;
 mod lexer;
+mod native;
 pub mod object;
 mod parser;
 mod symbol_table;
 mod token;
 mod vm;
 
+use native::init_native_function_registry;
+use object::Object;
 use symbol_table::SymbolTable;
 
 use crate::compiler::{Compiler, CompilerError};
@@ -42,12 +45,24 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new(config: Config) -> Interpreter {
-        Interpreter {
+        let native_function_registry = init_native_function_registry();
+        let mut interpreter = Interpreter {
             config,
             globals: SymbolTable::new(),
             source: String::new(),
             vm: Vm::new(),
+        };
+        for (name, native_function_obj) in native_function_registry {
+            interpreter.globals.insert(
+                &name,
+                Some(Object::new_with_name(
+                    name.to_string(),
+                    Value::NativeFunction(native_function_obj),
+                )),
+            );
         }
+
+        interpreter
     }
 
     pub fn run(&mut self, source: &str) -> Result<Value, InterpreterError> {

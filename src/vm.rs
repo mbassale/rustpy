@@ -215,6 +215,18 @@ impl Vm {
                                 ip: 0,
                             });
                         }
+                        Value::NativeFunction(native_function) => {
+                            let func = native_function.function.as_ref();
+                            let mut args = Vec::new();
+                            for _ in 0..native_function.arity {
+                                let arg = self.stack.pop().unwrap();
+                                args.push(arg);
+                            }
+                            args.reverse();
+                            let result = func(args);
+                            self.stack.push(result);
+                            self.current_frame().incr_ip(SIZE_INSTRUCTION);
+                        }
                         _ => {
                             return Err(VmError::InvalidOperand(format!(
                                 "Invalid callable: '{}'",
