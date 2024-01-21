@@ -23,6 +23,10 @@ impl SymbolTable {
         self.data.get_mut(&id).unwrap()
     }
 
+    pub fn set(&mut self, id: u64, obj: Object) {
+        self.data.insert(id, obj);
+    }
+
     pub fn insert(&mut self, name: &str, obj: Option<Object>) -> u64 {
         self.last_idx += 1;
         match obj {

@@ -70,10 +70,12 @@ impl Compiler<'_> {
         match expr {
             Expression::Function(function_expression) => {
                 let name = function_expression.name.to_string();
+                let function_id = self.globals.insert(&name, None);
+                dbg!(&self.globals);
                 let mut child_function = Function::new(name.to_string());
                 self.emit_function_expression(&mut child_function, &function_expression)?;
-                let function_object = Object::new(Value::Function(child_function));
-                self.globals.insert(&name, Some(function_object));
+                let function_object = Object::new_with_name(name, Value::Function(child_function));
+                self.globals.set(function_id, function_object);
                 Ok(())
             }
             Expression::Call(call_expression) => {
@@ -363,6 +365,11 @@ impl Compiler<'_> {
             {
                 function.chunk.emit(Bytecode::GetLocal);
                 function.chunk.emit_index(index as u64);
+            } else if &function.name == identifier {
+                // recursive call
+                let index = self.globals.get_index(identifier);
+                function.chunk.emit(Bytecode::GetGlobal);
+                function.chunk.emit_index(index);
             } else {
                 return Err(CompilerError::NameNotFound(format!(
                     "Name {} not found",

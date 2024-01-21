@@ -121,14 +121,24 @@ impl Object {
         Object { id, name, value }
     }
 
+    pub fn new_with_name(name: String, value: Value) -> Object {
+        let mut hasher = DefaultHasher::new();
+        name.hash(&mut hasher);
+        Object {
+            id: hasher.finish(),
+            name,
+            value,
+        }
+    }
+
     pub fn new(value: Value) -> Object {
+        let mut hasher = DefaultHasher::new();
+        value.hash(&mut hasher);
         let mut object = Object {
             id: 0,
             name: String::new(),
-            value: value.clone(),
+            value,
         };
-        let mut hasher = DefaultHasher::new();
-        value.hash(&mut hasher);
         object.id = hasher.finish();
         object.name = String::from("$") + &object.id.to_string();
         object
