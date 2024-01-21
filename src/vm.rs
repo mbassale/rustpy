@@ -193,7 +193,9 @@ impl Vm {
 
                 Bytecode::Call => {
                     let callable = self.stack.pop().unwrap();
+                    trace!("Callable: {:?}", callable);
                     let index = globals.get_index(&callable.name);
+                    trace!("GlobalIndex: {}", index);
                     let function_obj = match globals.get(index) {
                         Some(obj) => obj,
                         None => {
@@ -203,12 +205,13 @@ impl Vm {
                             )))
                         }
                     };
+                    trace!("Function: {:?}", function_obj);
                     match &function_obj.value {
                         Value::Function(function) => {
                             self.current_frame().incr_ip(SIZE_INSTRUCTION);
                             self.frames.push(Frame {
                                 function: function.clone(),
-                                stack_size: self.stack.len(),
+                                stack_size: self.stack.len() - function.arity,
                                 ip: 0,
                             });
                         }
