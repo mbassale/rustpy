@@ -37,7 +37,6 @@ pub enum Expression {
     Continue,
     Break,
     Return(ReturnExpression),
-    Print(PrintExpression),
     Assignment(AssignmentExpression),
     Unary(UnaryExpression),
     Binary(BinaryExpression),
@@ -96,11 +95,6 @@ pub struct WhileExpression {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ReturnExpression {
-    pub expr: Box<Expression>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct PrintExpression {
     pub expr: Box<Expression>,
 }
 

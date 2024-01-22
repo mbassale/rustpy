@@ -1,7 +1,7 @@
 use crate::ast::{
     AssignmentExpression, BinaryExpression, BlockExpression, CallExpression, ElifExpression,
-    Expression, FunctionExpression, IfExpression, Literal, Operator, PrintExpression, Program,
-    ReturnExpression, UnaryExpression, WhileExpression,
+    Expression, FunctionExpression, IfExpression, Literal, Operator, Program, ReturnExpression,
+    UnaryExpression, WhileExpression,
 };
 use crate::token::Token;
 
@@ -59,8 +59,6 @@ impl Parser {
             self.parse_break_expression()
         } else if self.match_token(&Token::Return) {
             self.parse_return_expression()
-        } else if self.match_token(&Token::Print) {
-            self.parse_print_expression()
         } else {
             self.parse_assignment()
         }
@@ -253,11 +251,6 @@ impl Parser {
             _ => self.parse_assignment()?,
         };
         Ok(Box::new(Expression::Return(ReturnExpression { expr })))
-    }
-
-    fn parse_print_expression(&mut self) -> Result<Box<Expression>, ParserError> {
-        let expr = self.parse_expression()?;
-        Ok(Box::new(Expression::Print(PrintExpression { expr })))
     }
 
     fn parse_assignment(&mut self) -> Result<Box<Expression>, ParserError> {
@@ -801,21 +794,11 @@ mod tests {
     fn test_break_continue_without_loop() {
         vec![
             (
-                vec![
-                    Token::Print,
-                    Token::Integer(1),
-                    Token::NewLine,
-                    Token::Continue,
-                ],
+                vec![Token::Integer(1), Token::NewLine, Token::Continue],
                 "continue",
             ),
             (
-                vec![
-                    Token::Print,
-                    Token::Integer(1),
-                    Token::NewLine,
-                    Token::Break,
-                ],
+                vec![Token::Integer(1), Token::NewLine, Token::Break],
                 "break",
             ),
         ]
@@ -962,43 +945,6 @@ mod tests {
                         ],
                     })),
                 ],
-            ),
-        ]
-        .into_iter()
-        .for_each(|(tokens, exprs)| {
-            let mut parser = Parser::new(tokens);
-            let program = match parser.parse() {
-                Ok(program) => program,
-                Err(err) => panic!("ParseError: {:?}", err),
-            };
-            assert_eq!(program.stmts, exprs);
-        });
-    }
-
-    #[test]
-    fn test_print_expression() {
-        vec![
-            (
-                vec![Token::Print, Token::True, Token::Eof],
-                vec![Box::new(Expression::Print(PrintExpression {
-                    expr: Box::new(Expression::Literal(Literal::True)),
-                }))],
-            ),
-            (
-                vec![
-                    Token::Print,
-                    Token::Identifier(String::from("test1")),
-                    Token::Plus,
-                    Token::Identifier(String::from("test2")),
-                    Token::Eof,
-                ],
-                vec![Box::new(Expression::Print(PrintExpression {
-                    expr: Box::new(Expression::Binary(BinaryExpression {
-                        lhs: Box::new(Expression::Variable(String::from("test1"))),
-                        op: Operator::Add,
-                        rhs: Box::new(Expression::Variable(String::from("test2"))),
-                    })),
-                }))],
             ),
         ]
         .into_iter()

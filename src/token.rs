@@ -40,7 +40,6 @@ pub enum Token {
     Continue,
     Break,
     Return,
-    Print,
     Integer(i64),
     Float(f64),
     Identifier(String),
