@@ -122,12 +122,15 @@ impl Compiler<'_> {
         function: &mut Function,
         call_expression: &CallExpression,
     ) -> Result<(), CompilerError> {
+        // emit in reverse order to save processing in interpreting loop
         call_expression
             .args
             .iter()
+            .rev()
             .try_for_each(|expr| self.emit_expression(function, expr.as_ref()))?;
         self.emit_expression(function, call_expression.callable.as_ref())?;
         function.chunk.emit(Bytecode::Call);
+        function.chunk.emit_index(call_expression.args.len() as u64);
         Ok(())
     }
 

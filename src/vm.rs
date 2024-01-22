@@ -12,6 +12,7 @@ pub enum VmError {
     InvalidBytecode(String),
     InvalidOperand(String),
     UndefinedName(String),
+    WrongArgumentCount(String),
 }
 
 pub struct Frame {
@@ -84,26 +85,42 @@ impl Vm {
         globals: &mut SymbolTable,
         function: Function,
     ) -> Result<Object, VmError> {
-        self.config = config;
-        self.stack.clear();
-        self.frames.push(Frame {
-            function,
-            stack_size: 0,
-            ip: 0,
-        });
-
+        self.init(config, function);
         trace!("Globals: {:?}", globals);
 
         while !self.frames.is_empty() {
-            let ret_val = self.interpret_function(globals)?;
-            self.stack.push(ret_val);
+            let result = self.interpret_function(globals);
+            match result {
+                Ok(ret_val) => self.stack.push(ret_val),
+                Err(err) => {
+                    self.tear_down();
+                    return Err(err);
+                }
+            };
         }
 
         let result = match self.stack.pop() {
             Some(value) => value,
             _ => Object::new_none(),
         };
+        self.tear_down();
         Ok(result)
+    }
+
+    fn init(&mut self, config: Config, function: Function) {
+        self.config = config;
+        self.stack.clear();
+        self.frames.clear();
+        self.frames.push(Frame {
+            function,
+            stack_size: 0,
+            ip: 0,
+        });
+    }
+
+    fn tear_down(&mut self) {
+        self.stack.clear();
+        self.frames.clear();
     }
 
     fn interpret_function(&mut self, globals: &mut SymbolTable) -> Result<Object, VmError> {
@@ -192,6 +209,9 @@ impl Vm {
                 }
 
                 Bytecode::Call => {
+                    let args_addr = self.current_frame().ip + SIZE_INSTRUCTION;
+                    let args_count =
+                        self.current_frame().get_chunk().get_data_u64(args_addr) as usize;
                     let callable = self.stack.pop().unwrap();
                     trace!("Callable: {:?}", callable);
                     let index = globals.get_index(&callable.name);
@@ -208,7 +228,13 @@ impl Vm {
                     trace!("Function: {:?}", function_obj);
                     match &function_obj.value {
                         Value::Function(function) => {
-                            self.current_frame().incr_ip(SIZE_INSTRUCTION);
+                            if args_count != function.arity {
+                                return Err(VmError::WrongArgumentCount(format!(
+                                    "Function: {} expect {} arguments, {} given.",
+                                    function.name, function.arity, args_count
+                                )));
+                            }
+                            self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
                             self.frames.push(Frame {
                                 function: function.clone(),
                                 stack_size: self.stack.len() - function.arity,
@@ -216,16 +242,24 @@ impl Vm {
                             });
                         }
                         Value::NativeFunction(native_function) => {
+                            if native_function.arity < usize::MAX {
+                                if args_count != native_function.arity {
+                                    return Err(VmError::WrongArgumentCount(format!(
+                                        "Function: {} expect {} arguments, {} given.",
+                                        native_function.name, native_function.arity, args_count
+                                    )));
+                                }
+                            }
+
                             let func = native_function.function.as_ref();
                             let mut args = Vec::new();
-                            for _ in 0..native_function.arity {
+                            for _ in 0..args_count {
                                 let arg = self.stack.pop().unwrap();
                                 args.push(arg);
                             }
-                            args.reverse();
                             let result = func(args);
                             self.stack.push(result);
-                            self.current_frame().incr_ip(SIZE_INSTRUCTION);
+                            self.current_frame().incr_ip(SIZE_INSTRUCTION + SIZE_INDEX);
                         }
                         _ => {
                             return Err(VmError::InvalidOperand(format!(
