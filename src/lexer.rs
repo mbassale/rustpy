@@ -66,7 +66,8 @@ impl Lexer {
                     self.indentation_level = new_indentation_level;
                     self.indentation_stack.push(Token::Indent);
                     return Token::Indent;
-                } else if !self.indentation_stack.is_empty()
+                }
+                if !self.indentation_stack.is_empty()
                     && new_indentation_level < self.indentation_level
                 {
                     self.indentation_level = new_indentation_level;
@@ -106,7 +107,7 @@ impl Lexer {
             return self.parse_identifier(chr);
         }
 
-        return Token::Error(format!("Error: invalid character: {}", chr));
+        Token::Error(format!("Error: invalid character: {}", chr))
     }
 
     fn parse_string(&mut self) -> Token {
@@ -483,6 +484,52 @@ def test(arg1, arg2, arg3):
                     Token::Indent,
                     Token::Return,
                     Token::True,
+                    Token::NewLine,
+                    Token::Dedent,
+                    Token::Eof,
+                ],
+            ),
+            (
+                r###"
+def test():
+    if a > 1:
+        a = 0
+    else:
+        a = 0
+    return a
+"###,
+                vec![
+                    Token::NewLine,
+                    Token::Def,
+                    Token::Identifier(String::from("test")),
+                    Token::LeftParen,
+                    Token::RightParen,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::If,
+                    Token::Identifier(String::from("a")),
+                    Token::Greater,
+                    Token::Integer(1),
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Identifier(String::from("a")),
+                    Token::Equal,
+                    Token::Integer(0),
+                    Token::NewLine,
+                    Token::Dedent,
+                    Token::Else,
+                    Token::Colon,
+                    Token::NewLine,
+                    Token::Indent,
+                    Token::Identifier(String::from("a")),
+                    Token::Equal,
+                    Token::Integer(0),
+                    Token::NewLine,
+                    Token::Dedent,
+                    Token::Return,
+                    Token::Identifier(String::from("a")),
                     Token::NewLine,
                     Token::Dedent,
                     Token::Eof,
